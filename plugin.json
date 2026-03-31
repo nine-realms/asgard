@@ -1,0 +1,18 @@
+{
+  "name": "asgard",
+  "version": "0.4.0",
+  "description": "Odin agent ecosystem — adversarial code review agents for GitHub Copilot CLI",
+  "author": {
+    "name": "Agents of Asgard"
+  },
+  "keywords": [
+    "odin",
+    "code-review",
+    "adversarial-review",
+    "agents"
+  ],
+  "skills": "skills/",
+  "agents": "agents/",
+  "extensions": "extensions/",
+  "mcpServers": ".mcp.json"
+}
