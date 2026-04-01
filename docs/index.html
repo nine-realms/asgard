@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asgard — Seven Gods. One Codebase. Ship Better Code.</title>
+  <meta name="description" content="The Asgard Agent System — specialized GitHub Copilot agent modes built on Norse mythology. Adversarial multi-model code review that catches what single agents miss.">
+  <meta name="theme-color" content="#0a0a12">
+  <meta property="og:title" content="Asgard — Seven Gods. One Codebase.">
+  <meta property="og:description" content="Specialized GitHub Copilot agent modes built on Norse mythology. Adversarial multi-model review.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nine-realms.github.io/asgard">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES
+       ═══════════════════════════════════════════════ */
+    :root {
+      --bg-deep: #0a0a12;
+      --bg-card: #1e1e38;
+      --bg-card-hover: #252548;
+      --gold: #f0c040;
+      --gold-dim: rgba(240, 192, 64, 0.15);
+      --gold-glow: rgba(240, 192, 64, 0.3);
+      --ice: #50c8ff;
+      --ice-dim: rgba(80, 200, 255, 0.12);
+      --text: #e8e4dc;
+      --text-muted: #a0a0b8;
+      --text-heading: #f0c040;
+      --border-ink: #3a3a5c;
+      --font-display: 'Impact', 'Arial Black', 'Oswald', sans-serif;
+      --font-body: 'Oswald', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+      --transition: 0.3s ease;
+      --max-width: 1200px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESET & BASE
+       ═══════════════════════════════════════════════ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-weight: 300;
+      background: var(--bg-deep);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--ice);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+    a:hover { color: var(--gold); }
+    a:focus-visible {
+      outline: 2px solid var(--ice);
+      outline-offset: 2px;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    ::selection {
+      background: var(--gold);
+      color: var(--bg-deep);
+    }
+
+    /* ═══════════════════════════════════════════════
+       NAVIGATION
+       ═══════════════════════════════════════════════ */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background var(--transition), box-shadow var(--transition);
+    }
+
+    .nav.scrolled {
+      background: rgba(10, 10, 18, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 1px 0 rgba(240, 192, 64, 0.1);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-logo img {
+      height: 36px;
+      width: auto;
+    }
+
+    .nav-logo span {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--gold);
+      transition: width var(--transition);
+    }
+
+    .nav-links a:hover {
+      color: var(--gold);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    /* ═══════════════════════════════════════════════
+       HERO SECTION
+       ═══════════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      overflow: hidden;
+    }
+
+    /* Cosmic background */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 30%, rgba(80, 200, 255, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 20% 80%, rgba(240, 192, 64, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 80% 70%, rgba(100, 60, 180, 0.05) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0a12 0%, #0f0f20 40%, #0a0a12 100%);
+      z-index: 0;
+    }
+
+    /* Halftone dot overlay */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(240, 192, 64, 0.08) 1px, transparent 1px);
+      background-size: 8px 8px;
+      opacity: 0.4;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+    }
+
+    .hero-runes {
+      font-size: 1rem;
+      letter-spacing: 0.5em;
+      color: var(--gold);
+      opacity: 0.4;
+      margin-bottom: 1rem;
+    }
+
+    .hero-logo {
+      display: block;
+      max-width: 480px;
+      width: 80vw;
+      margin: 0 auto 1rem;
+    }
+
+    .hero-logo-img {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 40px rgba(240, 192, 64, 0.2));
+    }
+
+    .hero-tagline {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      line-height: 1.05;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    .gold {
+      color: var(--gold);
+      text-shadow: 0 0 40px rgba(240, 192, 64, 0.3);
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--text-muted);
+      font-weight: 300;
+      max-width: 600px;
+      margin: 0 auto 3rem;
+      line-height: 1.5;
+    }
+
+    /* Terminal install block */
+    .terminal {
+      background: rgba(10, 10, 18, 0.8);
+      border: 2px solid var(--border-ink);
+      border-radius: 8px;
+      padding: 0;
+      max-width: 520px;
+      margin: 0 auto;
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: rgba(30, 30, 56, 0.6);
+      border-bottom: 1px solid var(--border-ink);
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border-ink);
+    }
+
+    .terminal-dot:nth-child(1) { background: #ff5f57; }
+    .terminal-dot:nth-child(2) { background: #febc2e; }
+    .terminal-dot:nth-child(3) { background: #28c840; }
+
+    .terminal-body {
+      padding: 1.25rem 1.5rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .terminal-prompt {
+      color: var(--ice);
+      user-select: none;
+    }
+
+    .terminal-command {
+      color: var(--gold);
+    }
+
+    .terminal-copy {
+      display: inline-block;
+      margin-left: 0.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      transition: color var(--transition);
+      background: none;
+      border: none;
+      font-family: inherit;
+      vertical-align: middle;
+    }
+    .terminal-copy:hover { color: var(--gold); }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      animation: bobDown 2s ease-in-out infinite;
+      color: var(--text-muted);
+      opacity: 0.5;
+      font-size: 1.5rem;
+    }
+
+    @keyframes bobDown {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       BIFROST DIVIDER
+       ═══════════════════════════════════════════════ */
+    .bifrost {
+      height: 3px;
+      background: linear-gradient(
+        90deg,
+        #ff3030 0%,
+        #ff8c00 15%,
+        #f0c040 30%,
+        #28c840 45%,
+        #50c8ff 60%,
+        #6040ff 75%,
+        #c850ff 90%,
+        #ff3030 100%
+      );
+      background-size: 200% 100%;
+      animation: bifrostShimmer 4s linear infinite;
+      border: none;
+      margin: 0;
+    }
+
+    @keyframes bifrostShimmer {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       SECTION LAYOUT
+       ═══════════════════════════════════════════════ */
+    .section {
+      padding: 6rem 2rem;
+      max-width: var(--max-width);
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      text-transform: uppercase;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      margin-bottom: 3rem;
+      padding-left: 1.25rem;
+      border-left: 4px solid var(--gold);
+      line-height: 1.1;
+    }
+
+    /* ═══════════════════════════════════════════════
+       PROBLEM SECTION
+       ═══════════════════════════════════════════════ */
+    .problem {
+      background:
+        radial-gradient(ellipse 70% 50% at 80% 50%, rgba(240, 192, 64, 0.03) 0%, transparent 60%),
+        var(--bg-deep);
+    }
+
+    .problem-inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 6rem 2rem;
+    }
+
+    .problem h2 {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      text-transform: uppercase;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 2rem;
+    }
+
+    .problem h2 .gold { }
+
+    .problem p {
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
+      color: var(--text-muted);
+      max-width: 720px;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    .problem strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════
+       PANTHEON / AGENT CARDS
+       ═══════════════════════════════════════════════ */
+    .pantheon-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+
+    /* Center the last row if it has fewer items */
+    .pantheon-grid .card:nth-last-child(1):nth-child(3n+1) {
+      grid-column: 2;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-ink);
+      border-radius: 12px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition:
+        transform var(--transition),
+        box-shadow var(--transition),
+        border-color var(--transition);
+    }
+
+    .card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 0 30px var(--gold-glow), 0 8px 32px rgba(0, 0, 0, 0.4);
+      border-color: var(--gold);
+    }
+
+    .card picture {
+      display: block;
+      margin: 0 auto 1.25rem;
+      width: 100px;
+      height: 100px;
+    }
+
+    .card-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--gold);
+      box-shadow: 0 0 16px var(--gold-dim);
+      animation: avatarPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes avatarPulse {
+      0%, 100% { box-shadow: 0 0 16px var(--gold-dim); }
+      50% { box-shadow: 0 0 24px var(--gold-glow); }
+    }
+
+    .card-name {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-role {
+      font-size: 0.85rem;
+      color: var(--ice);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .card-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════════════
+       PIPELINE / HOW IT WORKS
+       ═══════════════════════════════════════════════ */
+    .pipeline {
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 50%, rgba(80, 200, 255, 0.03) 0%, transparent 60%),
+        var(--bg-deep);
+    }
+
+    .pipeline-inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 6rem 2rem;
+    }
+
+    .pipeline-steps {
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-step {
+      flex: 1;
+      min-width: 160px;
+      max-width: 220px;
+      padding: 2rem 1rem;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Arrow connector between steps */
+    .pipeline-step:not(:last-child)::after {
+      content: '›';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2rem;
+      color: var(--gold);
+      opacity: 0.5;
+      font-weight: 300;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-agent {
+      font-size: 0.8rem;
+      color: var(--ice);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════════════
+       INSTALL SECTION
+       ═══════════════════════════════════════════════ */
+    .install {
+      text-align: center;
+    }
+
+    .install .terminal {
+      margin: 0 auto 2rem;
+    }
+
+    .install-links {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    .install-link {
+      font-weight: 500;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.6rem 1.5rem;
+      border: 2px solid var(--border-ink);
+      border-radius: 6px;
+      transition: all var(--transition);
+    }
+
+    .install-link:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      box-shadow: 0 0 16px var(--gold-dim);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════ */
+    .footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border-ink);
+    }
+
+    .footer-runes {
+      font-size: 1.2rem;
+      letter-spacing: 0.6em;
+      color: var(--gold);
+      opacity: 0.25;
+      margin-bottom: 1rem;
+    }
+
+    .footer-tagline {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      font-weight: 300;
+    }
+
+    .footer-tagline a {
+      color: var(--gold);
+      opacity: 0.7;
+      transition: opacity var(--transition);
+    }
+
+    .footer-tagline a:hover { opacity: 1; }
+
+    /* ═══════════════════════════════════════════════
+       STARFIELD (canvas behind hero)
+       ═══════════════════════════════════════════════ */
+    #starfield {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .pantheon-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* Reset centering trick for 2-col layout */
+      .pantheon-grid .card:nth-last-child(1):nth-child(3n+1) {
+        grid-column: auto;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        padding: 0.75rem 1.25rem;
+      }
+
+      .nav-logo span {
+        font-size: 1.1rem;
+      }
+
+      .nav-links {
+        gap: 1.25rem;
+      }
+
+      .nav-links a {
+        font-size: 0.8rem;
+      }
+
+      .section {
+        padding: 4rem 1.25rem;
+      }
+
+      .problem-inner,
+      .pipeline-inner {
+        padding: 4rem 1.25rem;
+      }
+
+      .pantheon-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .pipeline-steps {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .pipeline-step {
+        max-width: 100%;
+      }
+
+      .pipeline-step:not(:last-child)::after {
+        content: '↓';
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        display: block;
+        margin-top: 0.5rem;
+      }
+
+      .terminal {
+        max-width: 100%;
+      }
+
+      .terminal-body {
+        font-size: 0.78rem;
+        padding: 1rem;
+      }
+    }
+
+    @media (max-width: 375px) {
+      .hero h1 {
+        font-size: 2.2rem;
+      }
+
+      .section-label {
+        font-size: 1.6rem;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       SKIP LINK (accessibility)
+       ═══════════════════════════════════════════════ */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 1rem;
+      background: var(--gold);
+      color: var(--bg-deep);
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      z-index: 9999;
+      border-radius: 4px;
+    }
+    .skip-link:focus {
+      top: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Skip link for accessibility -->
+  <a href="#pantheon" class="skip-link">Skip to content</a>
+
+  <!-- ═══════════════════════════════════════════════
+       NAVIGATION
+       ═══════════════════════════════════════════════ -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <a href="#" class="nav-logo" aria-label="Asgard — home">
+      <span>Asgard</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#pantheon">Pantheon</a></li>
+      <li><a href="#install">Install</a></li>
+    </ul>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════
+       HERO
+       ═══════════════════════════════════════════════ -->
+  <section class="hero" role="banner">
+    <canvas id="starfield" aria-hidden="true"></canvas>
+    <div class="hero-content">
+      <div class="hero-runes" aria-hidden="true">ᚨ &nbsp; ᛊ &nbsp; ᚷ &nbsp; ᚨ &nbsp; ᚱ &nbsp; ᛞ</div>
+      <picture class="hero-logo">
+        <source srcset="assets/images/agents-of-asgard.webp" type="image/webp">
+        <img src="assets/images/agents-of-asgard.png" alt="Agents of Asgard" width="600" height="600" class="hero-logo-img">
+      </picture>
+      <p class="hero-tagline"><span class="gold">Seven gods.</span> One codebase. <span class="gold">Ship better code.</span></p>
+      <p class="hero-subtitle">
+        Specialized GitHub Copilot agent modes built on Norse mythology.
+        Adversarial multi-model review that catches what a single agent never will.
+      </p>
+      <div class="terminal" role="figure" aria-label="Install command">
+        <div class="terminal-header" aria-hidden="true">
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+        </div>
+        <div class="terminal-body">
+          <span class="terminal-prompt">$ </span><span class="terminal-command">copilot plugin install nine-realms/asgard</span>
+          <button class="terminal-copy" onclick="copyInstall()" aria-label="Copy install command" title="Copy to clipboard">⧉</button>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-indicator" aria-hidden="true">↓</div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       THE PROBLEM
+       ═══════════════════════════════════════════════ -->
+  <section class="problem">
+    <div class="problem-inner">
+      <h2><span class="gold">AI agents lie</span> to you.</h2>
+      <p>
+        They write code and say <strong>"Done."</strong> They claim builds pass without running them.
+        They never push back on a bad idea. Asgard fixes this with a pipeline&hairsp;—
+        <strong>Odin</strong> builds, <strong>Frigg</strong> reviews the plan,
+        <strong>Mimir</strong> checks the work, and <strong>three adversarial models</strong>
+        try to tear it apart. You get proof, not promises.
+      </p>
+    </div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       THE PANTHEON
+       ═══════════════════════════════════════════════ -->
+  <section class="section" id="pantheon">
+    <h2 class="section-label">The Pantheon</h2>
+    <div class="pantheon-grid">
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/odin.webp" type="image/webp">
+          <img src="assets/images/odin.png" alt="Odin — The Allfather" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Odin</h3>
+        <div class="card-role">Primary Agent</div>
+        <p class="card-desc">The Allfather. Odin is your primary agent&hairsp;— he plans the approach, writes the code, and orchestrates the entire workflow. Every task starts and ends with Odin.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/frigg.webp" type="image/webp">
+          <img src="assets/images/frigg.png" alt="Frigg — Goddess of Foresight" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Frigg</h3>
+        <div class="card-role">Plan Review</div>
+        <p class="card-desc">Goddess of foresight. Frigg reviews Odin's plan before a single line is written&hairsp;— or consult her directly to pressure-test an approach. She catches bad ideas early.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/tyr.webp" type="image/webp">
+          <img src="assets/images/tyr.png" alt="Tyr — God of Law" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Tyr</h3>
+        <div class="card-role">Standards & Enforcement</div>
+        <p class="card-desc">God of law. Tyr enforces coding standards, naming conventions, and best practices. The agent that keeps your codebase disciplined.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/mimir.webp" type="image/webp">
+          <img src="assets/images/mimir.png" alt="Mimir — The Wisest of All Beings" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Mimir</h3>
+        <div class="card-role">First-Line Review</div>
+        <p class="card-desc">The wisest of all beings. Mimir is your first-line reviewer&hairsp;— he examines Odin's work and catches issues before the adversarial panel weighs in.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/loki.webp" type="image/webp">
+          <img src="assets/images/loki.png" alt="Loki — The Trickster" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Loki</h3>
+        <div class="card-role">Adversarial Review</div>
+        <p class="card-desc">The trickster. Loki reviews Odin's work through a different lens, powered by a competing model. If there's a flaw in the logic, he'll find it.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/thor.webp" type="image/webp">
+          <img src="assets/images/thor.png" alt="Thor — God of Thunder" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Thor</h3>
+        <div class="card-role">Adversarial Review</div>
+        <p class="card-desc">God of thunder. Thor hits Odin's code with a second adversarial review from a different model. Brute-force scrutiny.</p>
+      </article>
+
+      <article class="card">
+        <picture>
+          <source srcset="assets/images/heimdall.webp" type="image/webp">
+          <img src="assets/images/heimdall.png" alt="Heimdall — Guardian of the Bifrost" class="card-avatar" loading="lazy" width="100" height="100">
+        </picture>
+        <h3 class="card-name">Heimdall</h3>
+        <div class="card-role">Adversarial Review</div>
+        <p class="card-desc">Guardian of the Bifrost. Heimdall watches from a third vantage point&hairsp;— a third model reviewing for what the others missed.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       HOW IT WORKS
+       ═══════════════════════════════════════════════ -->
+  <section class="pipeline">
+    <div class="pipeline-inner">
+      <h2 class="section-label">How It Works</h2>
+      <div class="pipeline-steps">
+
+        <div class="pipeline-step">
+          <div class="step-number">1</div>
+          <div class="step-title">Plan</div>
+          <div class="step-agent">Odin</div>
+          <p class="step-desc">Odin surveys the codebase and drafts the implementation plan.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-number">2</div>
+          <div class="step-title">Review Plan</div>
+          <div class="step-agent">Frigg</div>
+          <p class="step-desc">Frigg pressure-tests the plan before a single line is written.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-number">3</div>
+          <div class="step-title">Build</div>
+          <div class="step-agent">Odin</div>
+          <p class="step-desc">Odin writes the code, runs builds, and verifies every claim.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-number">4</div>
+          <div class="step-title">First Review</div>
+          <div class="step-agent">Mimir + Tyr</div>
+          <p class="step-desc">Mimir and Tyr examine the work for correctness and standards.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <div class="step-number">5</div>
+          <div class="step-title">Adversarial</div>
+          <div class="step-agent">Loki · Thor · Heimdall</div>
+          <p class="step-desc">Three different models review independently. They disagree — that's the point.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       INSTALL
+       ═══════════════════════════════════════════════ -->
+  <section class="section install" id="install">
+    <h2 class="section-label">Install</h2>
+    <div class="terminal" role="figure" aria-label="Install command">
+      <div class="terminal-header" aria-hidden="true">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+      </div>
+      <div class="terminal-body">
+        <span class="terminal-prompt">$ </span><span class="terminal-command">copilot plugin install nine-realms/asgard</span>
+        <button class="terminal-copy" onclick="copyInstall()" aria-label="Copy install command" title="Copy to clipboard">⧉</button>
+      </div>
+    </div>
+    <div class="install-links">
+      <a href="https://github.com/nine-realms/asgard" class="install-link" target="_blank" rel="noopener">
+        GitHub Repo →
+      </a>
+    </div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="footer-runes" aria-hidden="true">ᚨ ᛊ ᚷ ᚨ ᚱ ᛞ</div>
+    <p class="footer-tagline">
+      Built in Asgard &nbsp;·&nbsp;
+      <a href="https://github.com/nine-realms" target="_blank" rel="noopener">Nine Realms</a>
+    </p>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════
+       SCRIPTS
+       ═══════════════════════════════════════════════ -->
+  <script>
+    /* Nav scroll behavior */
+    const nav = document.querySelector('.nav');
+    const observer = new IntersectionObserver(
+      ([entry]) => nav.classList.toggle('scrolled', !entry.isIntersecting),
+      { threshold: 0.8 }
+    );
+    observer.observe(document.querySelector('.hero'));
+
+    /* Copy install command */
+    function copyInstall() {
+      navigator.clipboard.writeText('copilot plugin install nine-realms/asgard').then(() => {
+        const btns = document.querySelectorAll('.terminal-copy');
+        btns.forEach(btn => {
+          const original = btn.textContent;
+          btn.textContent = '✓';
+          btn.style.color = '#28c840';
+          setTimeout(() => { btn.textContent = original; btn.style.color = ''; }, 1500);
+        });
+      });
+    }
+
+    /* Starfield canvas */
+    (function() {
+      const canvas = document.getElementById('starfield');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      const COUNT = 120;
+
+      function resize() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        init();
+      }
+
+      function init() {
+        stars = [];
+        for (let i = 0; i < COUNT; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.2 + 0.3,
+            a: Math.random() * 0.6 + 0.1,
+            speed: Math.random() * 0.0008 + 0.0003,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      function draw(t) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const s of stars) {
+          const flicker = 0.5 + 0.5 * Math.sin(t * s.speed * 1000 + s.phase);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(232, 228, 220, ${s.a * flicker})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      requestAnimationFrame(draw);
+    })();
+
+    /* Fade-in on scroll */
+    const fadeEls = document.querySelectorAll('.card, .pipeline-step');
+    const fadeObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+            fadeObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    fadeEls.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(24px)';
+      el.style.transition = `opacity 0.6s ease ${i * 0.07}s, transform 0.6s ease ${i * 0.07}s`;
+      fadeObserver.observe(el);
+    });
+  </script>
+</body>
+</html>

@@ -10,3 +10,6 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Original uncompressed images (backups of PNGs before WebP conversion)
+docs/assets/images/originals/
