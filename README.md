@@ -33,13 +33,12 @@ Add a `## Odin` section to your repo's `.github/copilot-instructions.md`:
 ```markdown
 ## Odin
 - Don't save plan files
-- Skip Frigg review on medium tasks
 - Use branch prefix: feature/
 ```
 
-Odin reads this file at the start of every task — no extra config files needed.
+Odin reads this file at the start of every task — no extra config files needed. Note: some behaviors are non-overridable (Frigg plan review, verification ledger, commit/push gates) even if repo instructions request otherwise.
 
-Odin saves task plans to `.github/odin/plans/` in your repo. To keep them out of version control:
+By default, Odin saves task plans to `.github/odin/plans/` in your repo. Repo instructions can opt out of this (see above), or to keep them out of version control:
 
 ```gitignore
 .github/odin/plans/*.md
