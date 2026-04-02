@@ -13,3 +13,7 @@ npm-debug.log*
 
 # Original uncompressed images (backups of PNGs before WebP conversion)
 docs/assets/images/originals/
+
+# Odin ephemeral plan files (per-task, not decision records)
+.github/odin/plans/*
+!.github/odin/plans/.gitkeep
