@@ -45,6 +45,13 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 1b (Recall): Fixed fallback query — changed `s.repository` → `s.cwd` with `{repo_path}` for correct filesystem-based session matching
 - Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
 - Step 5c (Adversarial Review): Added specification review prompt for `.agent.md`/`.skill.md` files — three-way file-type classification (spec / doc / code) with additive mixed-diff handling
+- Step 1b (Recall): Fixed undefined `{target_module}`/`{target_filename}` placeholders → `{filename}` (consistent with other Recall queries)
+- Step 2b (Progress Signal): Fixed malformed tooling placeholder syntax — removed wrapping braces from multi-item status list
+- Step 5c (Adversarial Review): Fixed literal `{placeholders}` in spec/code review prompts that could confuse the template expansion pipeline
+- Step 5c (Adversarial Review): Added `description` parameter to all reviewer task templates for consistent UI labels
+- Step 3a (Plan Review): Added `description` parameter to Frigg task template
+- Step 5c (Adversarial Review): Added `review_context=panel` metadata and `panel_reviewers` list to Mimir prompts — activates Mimir's panel mode lane assignments
+- Step 5c (Adversarial Review): Dynamic reviewer model selection — Heimdall/Thor/Loki models auto-selected by cross-family table based on Odin's model, with fallback rules
 
 ---
 
@@ -251,7 +258,7 @@ AND session_id IN (
 ```sql
 -- database: session_store
 SELECT content, session_id, source_type FROM search_index
-WHERE search_index MATCH '{target_module} OR {target_filename}'
+WHERE search_index MATCH '{filename}'
 AND source_type IN ('checkpoint_overview', 'workspace_artifact')
 LIMIT 5;
 ```
@@ -291,7 +298,7 @@ If you find reusable code, surface it:
 After Steps 0-2 complete, emit a single condensed line summarizing what was found before presenting the plan:
 
 ```
-> 📡 Scanned {N} instruction files · {N} past sessions · tooling: {build ✓/✗, test ✓/✗, lint ✓/✗} · {N} files in blast radius
+> 📡 Scanned {N} instruction files · {N} past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · {N} files in blast radius
 ```
 
 This breaks the "silent wall" between task start and plan presentation. Keep it to one line — this is a status signal, not a report.
@@ -321,6 +328,7 @@ Before the user sees the plan, send the draft from Step 3 to **Frigg** for a cro
 agent_type: "asgard:frigg"
 model: "{selected_cross_model}"
 name: "frigg"
+description: "Cross-model plan review"
 prompt: "Review this implementation plan.
 
          ## Plan
@@ -519,7 +527,7 @@ prompt: "Review the following staged changes to behavioral specification files.
          </STAGED_DIFF>
          These are agent/skill specification files. Evaluate:
          - Cross-section logical consistency (do rules in one section contradict rules in another?)
-         - Template placeholder validity (are {placeholders} in code blocks defined or established by convention?)
+         - Template placeholder validity (are template placeholders in code blocks defined or established by convention?)
          - Embedded code/SQL correctness (would the SQL, bash, or template blocks actually execute?)
          - Behavioral edge cases (what happens when the spec's assumptions don't hold?)
          - Gate/verification logic (are gates achievable? do they reference the right check names?)
@@ -570,7 +578,7 @@ prompt: "Review the following staged changes.
          {IF_SPEC_FILES_IN_DIFF}
          Additionally, for any .agent.md or .skill.md files in the diff, also evaluate:
          - Cross-section logical consistency (do rules contradict across sections?)
-         - Template placeholder validity (are {placeholders} defined or established?)
+         - Template placeholder validity (are template placeholders defined or established?)
          - Embedded code/SQL correctness (would the blocks actually execute?)
          - Behavioral edge cases (what if the spec's assumptions don't hold?)
          {/IF_SPEC_FILES_IN_DIFF}"
@@ -589,6 +597,7 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 agent_type: "asgard:tyr"
 model: "gpt-5.3-codex"
 name: "tyr"
+description: "Convention enforcement review"
 prompt: "{documentation_or_code_review_prompt_above}"
 ```
 > **Tyr** — the god of law and justice. Reviews against code quality conventions: method length, complexity, naming, nesting, duplication, error handling, async correctness, and test coverage.
@@ -597,7 +606,9 @@ prompt: "{documentation_or_code_review_prompt_above}"
 agent_type: "asgard:mimir"
 model: "gpt-5.3-codex"
 name: "mimir"
+description: "Heuristic pre-screening review"
 prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
+         review_context=panel, panel_reviewers=tyr,mimir
          Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
          <STAGED_DIFF>
          {staged_diff}
@@ -613,6 +624,7 @@ INSERT each verdict with `phase = 'review'` and `check_name = 'review-tyr'` / `c
 agent_type: "asgard:tyr"
 model: "gpt-5.3-codex"
 name: "tyr"
+description: "Convention enforcement review"
 prompt: "{documentation_or_code_review_prompt_above}"
 ```
 
@@ -620,19 +632,36 @@ prompt: "{documentation_or_code_review_prompt_above}"
 agent_type: "asgard:mimir"
 model: "gpt-5.3-codex"
 name: "mimir"
-prompt: "{mimir_prompt_above}"
+description: "Heuristic pre-screening review"
+prompt: "review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki
+         Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
+         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
+         <STAGED_DIFF>
+         {staged_diff}
+         </STAGED_DIFF>"
 ```
 
 Then in parallel:
 
+**Reviewer model selection** — maximize model diversity across the review panel. Check your own model family from `<model_information>`, then select from the table:
+
+| Odin's model family | Heimdall | Thor | Loki |
+|---------------------|----------|------|------|
+| Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `gpt-5.2-codex` |
+| OpenAI (GPT) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `claude-opus-4.6` |
+| Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
+| Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
+
+**Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. INSERT `check_name = 'review-{name}-model-fallback'` with `output_snippet` noting the original and substitute models. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap.
+
+**Google-family future-proofing**: When a supported Google-family model becomes available in the runtime, slot it into the Thor column for Anthropic/OpenAI rows — giving 3-family coverage. Until then, Thor uses the cross-family selection above.
+
 ```
-agent_type: "code-review", model: "gpt-5.3-codex",       name: "heimdall", prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "gpt-5.4",              name: "thor",     prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "claude-opus-4.6",      name: "loki",     prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{heimdall_model}", name: "heimdall", description: "Baseline code review",        prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{thor_model}",     name: "thor",     description: "Cross-family code review",     prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{loki_model}",     name: "loki",     description: "Adversarial trickster review", prompt: "{documentation_or_code_review_prompt_above}"
 ```
 > **Heimdall** (watcher), **Thor** (thunder), **Loki** (trickster) — Odin's children stand guard. Loki finds the subtle, devious problems everyone else misses.
-
-Thor currently uses `gpt-5.4` as a temporary fallback because no Google-family reviewer model is available in this runtime. If a supported Google-family reviewer becomes available again, restore Thor to a distinct Google lane.
 
 INSERT each verdict with `phase = 'review'` and `check_name = 'review-{name}'` (e.g., `review-heimdall`, `review-thor`, `review-loki`).
 
