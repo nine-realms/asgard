@@ -31,7 +31,7 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 3a (Plan Review): Added one-time Frigg rerun on material user plan changes (files, risk, architecture, or task size)
 - Step 5c (Adversarial Review): Changed Thor from `gemini-3-pro-preview` to `gpt-5.4` as a temporary fallback until a Google-family reviewer model is available again
 - Added `asgard/agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
-- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task-id}.md` for team visibility and cross-session recall; appends completion metadata after commit
+- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task_id}.md` for team visibility and cross-session recall; appends completion metadata after commit
 - Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
 - Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable
 - Step 0 (Boost): Added non-overridable behaviors list — plan review, verification ledger, commit/push gates, and evidence bundle cannot be suppressed by repo instruction files
@@ -56,6 +56,11 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
 - Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
 - Step 5c (Adversarial Review): Fixed prompt render rule — `{staged_diff}` inside `<STAGED_DIFF>` tags IS substituted (phase 2), then the expanded content is protected from double-substitution (phase 3). Previous wording implied the tags blocked all substitution.
+- Standardized `{task_id}` placeholder name — replaced 4 occurrences of `{task-id}` in file paths/headings with `{task_id}` (the slug value still contains dashes, e.g., `fix-login-crash`)
+- Step 5c (Adversarial Review): Added size guard exception — when diff exceeds ~8K lines and reviewers receive only `{list_of_files}`, they ARE instructed to run `git diff` per-file (overrides the general "don't re-run git" rule)
+- Runtime Gate: Clarified why checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always bundles `bash` and `task`
+- Step 5e (Evidence Bundle Gate): Tightened query to exclude `readiness-*` rows — gate now counts only real verification signals (build, test, lint, diagnostics), not 5d readiness checks
+- Step 3a (Plan Review): Standardized Frigg placeholder to `{frigg_model}` everywhere — replaced `{selected_cross_model}` and `{model}` variants
 
 ---
 
@@ -106,7 +111,7 @@ If unsure, treat as Medium.
 All verification is recorded in SQL. This prevents hallucinated verification.
 Use the `session` database for all ledger SQL. Never use `session_store` for writes (it is read-only). Never create project-local DB files (e.g., `odin_checks.db`).
 
-At the start of every task, generate a `task_id` slug from the task description (e.g., `fix-login-crash`, `add-user-avatar`). Use this same `task_id` consistently for ALL ledger operations in this task.
+At the start of every task, generate a `task_id` slug from the task description (e.g., `fix-login-crash`, `add-user-avatar`). Use this same `task_id` consistently for ALL ledger operations and file paths in this task. The slug naturally contains dashes — that's fine for file names like `.github/odin/plans/fix-login-crash.md`.
 
 Create the ledger:
 
@@ -141,7 +146,7 @@ Steps 0–2 produce **minimal output** - use `report_intent` to show progress, c
 
 Odin requires tools that only exist in the **Copilot CLI runtime**: `sql` (verification ledger), `bash` (commands), and `task` (subagent reviewers). VS Code Chat's **Local agent** mode does not have these tools — but VS Code's **Copilot CLI** agent target does.
 
-Before starting any task, verify you have a `sql` tool. If you do, run this smoke test:
+Before starting any task, verify you have a `sql` tool. Checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always includes `bash` and `task` as well. If you have `sql`, you have everything. Run this smoke test:
 
 ```sql
 -- database: session
@@ -330,7 +335,7 @@ Before the user sees the plan, send the draft from Step 3 to **Frigg** for a cro
 
 ```
 agent_type: "asgard:frigg"
-model: "{selected_cross_model}"
+model: "{frigg_model}"
 name: "frigg"
 description: "Cross-model plan review"
 prompt: "Review this implementation plan.
@@ -341,7 +346,7 @@ prompt: "Review this implementation plan.
          ## Files to change (with risk levels)
          {list_of_files_with_risk_levels}
 
-         ## Task size: {Small/Medium/Large}
+         ## Task size: {task_size}
          ## Repo: {repo_path}"
 ```
 
@@ -352,7 +357,7 @@ Use Frigg's feedback to refine the draft plan before presenting it.
 - If Frigg raises only concerns you can resolve unilaterally, incorporate them silently, present the refined plan once, and `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel".
 - If Frigg surfaces a substantive tradeoff or blocker you cannot resolve alone, present the concern with the refined plan:
 ```
-> 🔮 **Frigg** ({model}): [concerns]
+> 🔮 **Frigg** ({frigg_model}): [concerns]
 ```
   Then `ask_user` with choices: "Proceed with current plan" / "Adjust the plan" / "Cancel".
   This prompt is the plan approval gate for that path — do **not** prompt a second time.
@@ -395,7 +400,7 @@ Create the directory if it doesn't exist: `mkdir -p .github/odin/plans`
 
 **Write the plan file:**
 ```markdown
-# {task-id}
+# {task_id}
 
 **Date**: {YYYY-MM-DD}
 **Size**: Small / Medium / Large
@@ -409,7 +414,7 @@ Create the directory if it doesn't exist: `mkdir -p .github/odin/plans`
 ```
 
 **🚫 GATE: If plan file persistence is enabled (the default), do NOT proceed to Step 3c (Medium/Large) or Step 4 (Small) until the file is written.**
-**Verify: `test -s .github/odin/plans/{task-id}.md && echo EXISTS || echo MISSING`**
+**Verify: `test -s .github/odin/plans/{task_id}.md && echo EXISTS || echo MISSING`**
 **If MISSING, go back and write the plan file. Use `test -s` (not `test -f`) to catch empty/truncated writes.**
 **If repo instructions have opted out of plan file persistence, this gate does not apply — the 3a SQL INSERT gate is sufficient.**
 
@@ -501,7 +506,7 @@ Before launching reviewers, stage and capture review inputs once:
 
 Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings — including `{list_of_files}`, `{staged_diff}`, and (for Large tasks) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the model selection table. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
 
-Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes.
+Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes. **Exception:** when the size guard triggers (diff > ~8,000 lines), reviewers receive only `{list_of_files}` and are explicitly instructed to run `git diff --staged -- {file}` per-file — this is the one case where reviewers do run git.
 
 **Reviewer timeout:** If a reviewer has not responded within 10 minutes, proceed with the verdicts you have. INSERT a check with `check_name = 'review-{name}-timeout'` (e.g., `review-heimdall-timeout`), `passed = 1`, and `output_snippet = 'Reviewer timed out after 10 minutes'`. Do not block the loop waiting indefinitely. If a late verdict arrives after the timeout was recorded, do NOT insert a second row — the timeout satisfies the gate.
 
@@ -687,9 +692,9 @@ INSERT each check into `odin_checks` with `phase = 'after'`, `check_name = 'read
 **🚫 GATE: Do NOT present the Evidence Bundle until:**
 ```sql
 -- database: session
-SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after';
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%';
 ```
-**Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase rows don't count - this gate requires real verification signals. If insufficient, return to 5b.**
+**Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
 
 Generate from SQL:
 ```sql
@@ -765,7 +770,7 @@ If the user approves:
 3. Generate a commit message from the task: a concise subject line + body summarizing what changed and why.
 4. Include the `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>` trailer.
 5. Commit: `git commit -m "{message}"`
-6. If the plan file exists (`.github/odin/plans/{task-id}.md`), append the completion footer with the commit SHA, branch, and confidence level from the Evidence Bundle.
+6. If the plan file exists (`.github/odin/plans/{task_id}.md`), append the completion footer with the commit SHA, branch, and confidence level from the Evidence Bundle.
 7. Tell the user: `✅ Committed on \`{branch}\`: {short_message}` and `Rollback: \`git revert HEAD\` or \`git checkout {pre_sha} -- {files}\``
 
 ### 9. Push & PR (after commit - ask first)
