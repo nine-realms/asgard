@@ -52,6 +52,9 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 3a (Plan Review): Added `description` parameter to Frigg task template
 - Step 5c (Adversarial Review): Added `review_context=panel` metadata and `panel_reviewers` list to Mimir prompts — activates Mimir's panel mode lane assignments
 - Step 5c (Adversarial Review): Dynamic reviewer model selection — Heimdall/Thor/Loki models auto-selected by cross-family table based on Odin's model, with fallback rules
+- Step 5b (Verification Cascade): Fixed Tier 2 skip/stale contradiction — Step 1 is always-run, replaced impossible "if skipped" branch with "if context was lost" graceful degradation
+- Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
+- Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
 
 ---
 
@@ -460,7 +463,7 @@ Run every applicable tier. Do not stop at the first one. Defense in depth.
 
 **Tier 2 - Run if tooling exists (reuse Environment Scan cache from Step 1):**
 
-If the Environment Scan (Step 1) already discovered tooling, use those cached results — do not re-scan config files. If Step 1 was skipped or the cache is stale, detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
+Use the Environment Scan results from Step 1 — do not re-scan config files. If the conversation context was lost (e.g., context window overflow), re-detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
 
 3. **Build/compile**: The project's build command. INSERT exit code.
 4. **Type checker**: Even on changed files alone if project doesn't use one globally.
@@ -495,7 +498,7 @@ Before launching reviewers, stage and capture review inputs once:
 
 **Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a check with `check_name = 'review-partial-coverage'` noting which files were included.
 
-Before calling `task()` for each reviewer, materialize prompt strings by substituting the captured values into `{list_of_files}` and `{staged_diff}` placeholders. Do not pass unresolved `{...}` tokens — expand them into the actual captured text.
+Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings — including `{list_of_files}`, `{staged_diff}`, and (for Large tasks) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the model selection table. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
 
 Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes.
 
@@ -655,6 +658,8 @@ Then in parallel:
 **Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. INSERT `check_name = 'review-{name}-model-fallback'` with `output_snippet` noting the original and substitute models. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap.
 
 **Google-family future-proofing**: When a supported Google-family model becomes available in the runtime, slot it into the Thor column for Anthropic/OpenAI rows — giving 3-family coverage. Until then, Thor uses the cross-family selection above.
+
+**Model materialization**: Before launching Heimdall/Thor/Loki, look up your model family in the table above and resolve `{heimdall_model}`, `{thor_model}`, `{loki_model}` to concrete model strings from the matching row. These are subject to the general materialization rule above — substitute them into the task templates below alongside the previously materialized `{list_of_files}` and `{staged_diff}`.
 
 ```
 agent_type: "code-review", model: "{heimdall_model}", name: "heimdall", description: "Baseline code review",        prompt: "{documentation_or_code_review_prompt_above}"

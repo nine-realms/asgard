@@ -529,6 +529,7 @@ When behavioral specification files (`.agent.md`, `.skill.md`) contain code bloc
 - Placeholders that changed name in one section but not in the code blocks that reference them (e.g., `{repo_name}` vs `{repo_path}`)
 - Code blocks copied between sections where the placeholder context differs but the tokens weren't updated
 - Placeholders in example/illustration blocks are **excluded** — only flag placeholders in blocks that are meant to be executed or expanded at runtime
+- Lookup tables or selection rules that define how a placeholder value should be computed, but no explicit instruction to perform the lookup and substitute the result before the placeholder is consumed (table-to-template gap)
 
 
 #### CCA-022 · Cross-Section Rule Consistency
@@ -540,6 +541,7 @@ When specification files define rules, gates, or conditions across multiple sect
 - Contradictory directives (e.g., "always run X" in one section vs "skip X for Small tasks" in another)
 - Step numbering or ordering references that don't match the actual step sequence
 - Conditions that are achievable only if an optional step ran (but that step can be skipped)
+- Diff text that references another section's behavior with an assumed condition (e.g., "if X was skipped") that contradicts the referenced section's actual definition (e.g., "X always runs") — cross-reference the assumed condition against the source section
 
 
 #### CCA-023 · Embedded Code Validity
