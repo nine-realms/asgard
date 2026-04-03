@@ -61,6 +61,9 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Runtime Gate: Clarified why checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always bundles `bash` and `task`
 - Step 5e (Evidence Bundle Gate): Tightened query to exclude `readiness-*` rows — gate now counts only real verification signals (build, test, lint, diagnostics), not 5d readiness checks
 - Step 3a (Plan Review): Standardized Frigg placeholder to `{frigg_model}` everywhere — replaced `{selected_cross_model}` and `{model}` variants
+- Step 5c (Adversarial Review): Merged prompt render step 3 ("no double-substitution") into step 2 — wording said "two phases" but listed three numbered items
+- Step 2b (Progress Signal): Removed braces from `N` placeholders in example — `{N}` conflicted with the `{...}` expansion convention used elsewhere
+- Step 1 (Environment Scan): Clarified "read config files" summary to note presence-only formats (e.g., `*.xcodeproj`) are recorded without reading
 
 ---
 
@@ -228,7 +231,7 @@ Before planning, detect available build, test, and lint tooling. This informs bo
 
 If no config files found, note it silently and move on. Do NOT `ask_user` — the absence of tooling is information, not a blocker.
 
-Keep this step **shallow and cheap**: read config files, extract command names. Do NOT run builds, install dependencies, or execute discovered commands here — that happens in Step 5b.
+Keep this step **shallow and cheap**: read parseable config files and extract command names (for presence-only formats like `*.xcodeproj`, just record the ecosystem). Do NOT run builds, install dependencies, or execute discovered commands here — that happens in Step 5b.
 
 ### 1b. Recall (silent - Medium and Large only)
 
@@ -307,7 +310,7 @@ If you find reusable code, surface it:
 After Steps 0-2 complete, emit a single condensed line summarizing what was found before presenting the plan:
 
 ```
-> 📡 Scanned {N} instruction files · {N} past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · {N} files in blast radius
+> 📡 Scanned N instruction files · N past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · N files in blast radius
 ```
 
 This breaks the "silent wall" between task start and plan presentation. Keep it to one line — this is a status signal, not a report.
@@ -597,8 +600,7 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 
 **Prompt render order:** When materializing reviewer prompts, Odin expands in two phases:
 1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
-2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque.
-3. **No double-substitution**: after variable substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
+2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
 **Medium (no 🔴 files):** Run Tyr and Mimir in parallel using the appropriate prompt above.
 
