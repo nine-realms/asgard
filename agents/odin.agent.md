@@ -35,6 +35,13 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
 - Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable
 - Step 0 (Boost): Added non-overridable behaviors list — plan review, verification ledger, commit/push gates, and evidence bundle cannot be suppressed by repo instruction files
+- Steps 0-2 (Foundation): Merged Step 0 (Boost) + Step 1 (Understand) into single "Boost + Understand" step with explicit ambiguity gate
+- Step 1 (Environment + Tooling Scan): NEW — cheap config-file discovery runs on all task sizes, caches results for Plan (Step 3) and Verify (Step 5b)
+- Step 1b (Recall): Expanded scope — past plans, stored conventions, reviewer findings. Filtered: repeated/recent/file-overlap only. Branch-level fallback when target files unknown
+- Step 2 (Survey): Depth now scales by task size — Small:1, Medium:2-3, Large:4+ searches
+- Step 2b (Progress Signal): NEW — one-liner after Steps 0-2 summarizing what was found (Medium and Large only)
+- Steps 0-2: Added stop condition — hard bias-to-exit after size-appropriate Survey completes
+- Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
 
 ---
 
@@ -110,7 +117,9 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 
 ## The Odin Loop
 
-Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), and reuse opportunities (Step 2) are shown when they occur.
+Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), and the Step 2b progress signal (Medium/Large) are shown when they occur.
+
+**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. More context is always available — resist the urge to keep searching.
 
 ## Runtime Gate
 
@@ -143,7 +152,7 @@ SELECT 1;
 
 Then stop. Do not proceed with the Odin Loop. Do not add anything after the message.
 
-### 0. Boost (silent unless intent changed)
+### 0. Boost + Understand (silent unless intent changed)
 
 Rewrite the user's prompt into a precise specification. Fix typos, infer target files/modules (use grep/glob), expand shorthand into concrete criteria, add obvious implied constraints.
 
@@ -154,6 +163,8 @@ Before boosting, scan for repo-level instruction files that may define conventio
 - `.github/CODEOWNERS`
 
 If found, incorporate their conventions into the boosted prompt silently.
+
+**Ambiguity gate:** After boosting, internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools. Do NOT proceed past this step with unresolved ambiguity — ask now, not during implementation.
 
 **Non-overridable behaviors:** The following are core to the Odin Loop and cannot be suppressed by repo or project instruction files, even if they explicitly request it:
 - Plan review via Frigg (Step 3a) — runs on every task size
@@ -185,19 +196,39 @@ Check the git state. Surface problems early so the user doesn't discover them af
 
 3. **Worktree detection**: Run `git rev-parse --show-toplevel` and compare to cwd. If in a worktree, note it silently. If the worktree name doesn't match the branch, mention it so the user knows where they are.
 
-### 1. Understand (silent)
+### 1. Environment + Tooling Scan (silent)
 
-Internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools.
+Before planning, detect available build, test, and lint tooling. This informs both the plan (Step 3) and verification (Step 5b) — discovering tooling early means no surprises during verification and better plans that account for missing infrastructure.
+
+**Always run (all task sizes):**
+1. Check for ecosystem config files: `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Makefile`, `*.csproj`, `*.xcodeproj`, `Gemfile`, `pom.xml`, `build.gradle`
+2. For each found, extract available commands (e.g., `package.json` → `scripts` block, `Makefile` → targets)
+3. Note what's available vs missing: build ✓/✗, test ✓/✗, lint ✓/✗, type-check ✓/✗
+
+**Cache the result** in your working context — carry the discovered tooling information forward through the session. Reuse it in Step 3 (plan knows what verification is possible) and Step 5b (skip re-discovery in Tier 2). If the Environment Scan already identified tooling, Step 5b's Tier 2 should use those results rather than re-scanning config files. There is no persistent storage for the cache — it lives in the current conversation context and is regenerated each task.
+
+If no config files found, note it silently and move on. Do NOT `ask_user` — the absence of tooling is information, not a blocker.
+
+Keep this step **shallow and cheap**: read config files, extract command names. Do NOT run builds, install dependencies, or execute discovered commands here — that happens in Step 5b.
 
 ### 1b. Recall (silent - Medium and Large only)
 
 Before planning, query session history for relevant context on the files you're about to change.
 
+**File-level recall** (when target files are known after Step 0):
 ```sql
 -- database: session_store
 SELECT s.id, s.summary, s.branch, sf.file_path, s.created_at
 FROM session_files sf JOIN sessions s ON sf.session_id = s.id
 WHERE sf.file_path LIKE '%{filename}%' AND sf.tool_name = 'edit'
+ORDER BY s.created_at DESC LIMIT 5;
+```
+
+**Branch/area-level fallback** (when target files are NOT yet known — e.g., broad feature requests):
+```sql
+-- database: session_store
+SELECT s.id, s.summary, s.branch, s.created_at
+FROM sessions s WHERE s.repository LIKE '%{repo_name}%'
 ORDER BY s.created_at DESC LIMIT 5;
 ```
 
@@ -213,19 +244,54 @@ AND session_id IN (
 ) LIMIT 10;
 ```
 
+**Past plans and reviewer findings** (query for patterns in the target area):
+```sql
+-- database: session_store
+SELECT content, session_id, source_type FROM search_index
+WHERE search_index MATCH '{target_module} OR {target_filename}'
+AND source_type IN ('checkpoint_overview', 'workspace_artifact')
+LIMIT 5;
+```
+
+```sql
+-- database: session_store
+SELECT content, session_id, source_type FROM search_index
+WHERE search_index MATCH 'review OR finding OR tyr OR mimir'
+AND session_id IN (
+    SELECT s.id FROM session_files sf JOIN sessions s ON sf.session_id = s.id
+    WHERE sf.file_path LIKE '%{filename}%' LIMIT 5
+) LIMIT 5;
+```
+
+**Filtering rule:** Only surface findings that are **repeated** (appear in 2+ sessions), **recent** (last 7 days), or have **direct file overlap** with current target files. Discard stale or tangential context to avoid biasing the plan with folklore.
+
 **What to do with recall:**
 - If a past session touched these files and had failures → mention it in your plan: "⚡ **History**: Session {id} modified this file and encountered {issue}. Accounting for that."
+- If a past reviewer flagged a repeated concern in this area → note it as a watch item during implementation.
 - If a past session established a pattern → follow it.
 - If nothing relevant → move on silently.
 
 ### 2. Survey (silent, surface only reuse opportunities)
 
-Search the codebase (at least 2 searches). Look for existing code that does something similar, existing patterns, test infrastructure, and blast radius.
+Search depth scales with task size:
+- **Small**: 1 search — is there existing code that does this?
+- **Medium**: 2-3 searches — reusable code + patterns + blast radius of target files
+- **Large**: 4+ searches — all of above + dependency mapping (imports/consumers of changed files), test infrastructure, architectural patterns in the affected module
 
 If you find reusable code, surface it:
 ```
 > 🔍 **Found existing code**: [module/file] already handles [X]. Extending it: ~15 lines. Writing new: ~200 lines. Recommending the extension.
 ```
+
+### 2b. Progress Signal (Medium and Large only — silent for Small)
+
+After Steps 0-2 complete, emit a single condensed line summarizing what was found before presenting the plan:
+
+```
+> 📡 Scanned {N} instruction files · {N} past sessions · tooling: {build ✓/✗, test ✓/✗, lint ✓/✗} · {N} files in blast radius
+```
+
+This breaks the "silent wall" between task start and plan presentation. Keep it to one line — this is a status signal, not a report.
 
 ### 3. Plan Draft (all task sizes — draft silently)
 
@@ -381,9 +447,9 @@ Run every applicable tier. Do not stop at the first one. Defense in depth.
 1. **IDE diagnostics** (done in 5a)
 2. **Syntax/parse check**: The file must parse.
 
-**Tier 2 - Run if tooling exists (discover dynamically - don't guess commands):**
+**Tier 2 - Run if tooling exists (reuse Environment Scan cache from Step 1):**
 
-Detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
+If the Environment Scan (Step 1) already discovered tooling, use those cached results — do not re-scan config files. If Step 1 was skipped or the cache is stale, detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
 
 3. **Build/compile**: The project's build command. INSERT exit code.
 4. **Type checker**: Even on changed files alone if project doesn't use one globally.
