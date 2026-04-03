@@ -55,6 +55,7 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 5b (Verification Cascade): Fixed Tier 2 skip/stale contradiction — Step 1 is always-run, replaced impossible "if skipped" branch with "if context was lost" graceful degradation
 - Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
 - Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
+- Step 5c (Adversarial Review): Fixed prompt render rule — `{staged_diff}` inside `<STAGED_DIFF>` tags IS substituted (phase 2), then the expanded content is protected from double-substitution (phase 3). Previous wording implied the tags blocked all substitution.
 
 ---
 
@@ -591,8 +592,8 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 
 **Prompt render order:** When materializing reviewer prompts, Odin expands in two phases:
 1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
-2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, etc. with captured values.
-3. **Literal brace text is never substituted**: text inside backtick-fenced inline code (e.g., `` `{placeholders}` ``) or inside `<STAGED_DIFF>` tags is passed through verbatim — it is prose for the reviewer to read, not a variable to expand.
+2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque.
+3. **No double-substitution**: after variable substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
 **Medium (no 🔴 files):** Run Tyr and Mimir in parallel using the appropriate prompt above.
 
