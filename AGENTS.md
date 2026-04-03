@@ -13,3 +13,8 @@ Heuristic pre-screening code reviewer. Catches common PR review findings before 
 
 ### Tyr (`asgard:tyr`)
 Adversarial but constructive code reviewer. Rigorously challenges code changes against readability, simplicity, and maintainability standards. Every criticism includes a concrete suggestion or rewritten example.
+
+## Skills
+
+### `odin-review-prompts`
+Review prompt templates, file-type classification, model selection, and reviewer launch instructions for Odin's Step 5c adversarial review. This is an **operational skill** — a hard dependency loaded on-demand during Step 5c, not on every turn. Contains the 3 review prompt templates (spec/doc/code), Tyr/Mimir/Heimdall/Thor/Loki launch templates, and the cross-family model selection table.
