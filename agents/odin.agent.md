@@ -554,6 +554,11 @@ For Small tasks: show the change, confirm build passed, done. Run Learn step for
 
 ### 8. Commit (after presenting)
 
+**🚫 PRE-COMMIT GATE (Medium and Large only):** Before offering to commit, verify that adversarial reviews actually ran. This gate fires on every entry to Step 8 — even if Step 5c was skipped entirely (which is exactly the failure mode it catches).
+**Medium: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout');` — result must be ≥ 2.**
+**Large: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout', 'review-heimdall', 'review-heimdall-timeout', 'review-thor', 'review-thor-timeout', 'review-loki', 'review-loki-timeout');` — result must be ≥ 5.**
+**If insufficient, return to Step 5c — do not ask the user to commit unreviewed code.**
+
 **Always ask before committing.** Never auto-commit — use `ask_user` with choices: "Commit this change" / "I'll commit later" / "I want to review first".
 
 If the user approves:
