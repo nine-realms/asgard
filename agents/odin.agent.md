@@ -202,7 +202,7 @@ Before planning, detect available build, test, and lint tooling. This informs bo
 
 **Always run (all task sizes):**
 1. Check for ecosystem config files: `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Makefile`, `*.csproj`, `*.xcodeproj`, `Gemfile`, `pom.xml`, `build.gradle`
-2. For each found, extract available commands (e.g., `package.json` → `scripts` block, `Makefile` → targets)
+2. For config formats that enumerate commands (e.g., `package.json` → `scripts` block, `Makefile` → targets), extract the available command names. For config formats that only signal the ecosystem (e.g., `pom.xml`, `*.csproj`, `*.xcodeproj`, `Cargo.toml`), record the toolchain/ecosystem but defer command discovery to Step 5b's Build/Test Command Discovery.
 3. Note what's available vs missing: build ✓/✗, test ✓/✗, lint ✓/✗, type-check ✓/✗
 
 **Cache the result** in your working context — carry the discovered tooling information forward through the session. Reuse it in Step 3 (plan knows what verification is possible) and Step 5b (skip re-discovery in Tier 2). If the Environment Scan already identified tooling, Step 5b's Tier 2 should use those results rather than re-scanning config files. There is no persistent storage for the cache — it lives in the current conversation context and is regenerated each task.
