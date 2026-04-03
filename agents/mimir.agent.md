@@ -520,6 +520,55 @@ When code contains feature flags or toggle checks, verify that flags which have 
 - Flags referenced in code but absent from all current config files (flag was removed from config but not from code)
 
 
+#### CCA-021 · Template Placeholder Consistency
+
+When behavioral specification files (`.agent.md`, `.skill.md`) contain code blocks with `{placeholder}` tokens, verify that each placeholder is either defined in the same section, established by a prior step in the documented flow, or is a well-known convention (e.g., `{task_id}`, `{staged_diff}`). Orphaned placeholders in embedded code blocks mean the runtime will substitute nothing or the LLM will hallucinate a value — both produce silent failures that are hard to trace.
+
+**Look for:**
+- `{placeholder}` tokens in SQL, bash, or template code blocks that are not defined or referenced elsewhere in the same specification file
+- Placeholders that changed name in one section but not in the code blocks that reference them (e.g., `{repo_name}` vs `{repo_path}`)
+- Code blocks copied between sections where the placeholder context differs but the tokens weren't updated
+- Placeholders in example/illustration blocks are **excluded** — only flag placeholders in blocks that are meant to be executed or expanded at runtime
+- Lookup tables or selection rules that define how a placeholder value should be computed, but no explicit instruction to perform the lookup and substitute the result before the placeholder is consumed (table-to-template gap)
+
+
+#### CCA-022 · Cross-Section Rule Consistency
+
+When specification files define rules, gates, or conditions across multiple sections, verify that they don't contradict each other. Specification files are long (400–800 lines) and internally cross-referenced — a change to one section's rule can silently break assumptions in another section's gate or flow. The result is an agent that non-deterministically follows one rule or the other depending on which section it reads first.
+
+**Look for:**
+- A gate condition in one section that references a check name or phase not produced by any earlier step
+- Contradictory directives (e.g., "always run X" in one section vs "skip X for Small tasks" in another)
+- Step numbering or ordering references that don't match the actual step sequence
+- Conditions that are achievable only if an optional step ran (but that step can be skipped)
+- Diff text that references another section's behavior with an assumed condition (e.g., "if X was skipped") that contradicts the referenced section's actual definition (e.g., "X always runs") — cross-reference the assumed condition against the source section
+
+
+#### CCA-023 · Embedded Code Validity
+
+When specification files contain embedded SQL, bash, template, or configuration blocks, verify that the blocks would actually parse and execute in their target runtime. LLMs generating specification files often produce plausible-looking but syntactically broken embedded code — missing quotes, wrong column names, invalid SQL keywords, or bash commands with incorrect flags. These blocks are executed at runtime by the agent or by the LLM expanding them, so a syntax error becomes a runtime failure.
+
+**Look for:**
+- SQL blocks with column names that don't match the `CREATE TABLE` schema defined elsewhere in the same file
+- Bash commands using flags that don't exist for that tool (e.g., `test -s` vs `test -f` confusion)
+- Template blocks mixing markdown fence syntax with XML tag delimiters in ways that break parsing
+- JSON/YAML blocks with trailing commas, missing brackets, or invalid escape sequences
+
+
+### Specification-Aware Review
+
+When the diff contains `.agent.md` or `.skill.md` files, activate specification-aware analysis in addition to standard code review passes. These files are behavioral specifications — their "bugs" are logical contradictions, orphaned references, and impossible gates rather than null pointer exceptions.
+
+**Activation:** Automatic when any file in the diff matches `*.agent.md` or `*.skill.md`. This mode is **additive** — standard code review passes still run for any code files in the same diff.
+
+**Additional analysis for spec files:**
+1. **Section dependency graph**: Trace which sections reference which other sections. Flag any reference to a section, step, or gate that doesn't exist or was renamed.
+2. **Flow completeness**: Walk the documented flow (e.g., "The Odin Loop") end-to-end. Can each gate be satisfied by the steps that precede it? Are there dead-end paths?
+3. **Template expansion safety**: For every code block meant to be expanded at runtime, verify all `{placeholders}` resolve and the expanded result would be valid in its target language.
+
+> **Future**: When CCA heuristic count exceeds ~25, extract specification-aware heuristics (CCA-021+) into a dedicated `skills/mimir-spec-review.skill.md` file and load them conditionally. This keeps the core agent file focused on general code review.
+
+
 ### Dynamic Analysis
 
 The heuristics above are a curated checklist — they cannot cover every cross-cutting pattern. After running them, apply the same depth of analysis to patterns they don't cover:

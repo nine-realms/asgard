@@ -15,5 +15,5 @@ npm-debug.log*
 docs/assets/images/originals/
 
 # Odin ephemeral plan files (per-task, not decision records)
-.github/odin/plans/*
+.github/odin/plans/*.md
 !.github/odin/plans/.gitkeep

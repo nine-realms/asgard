@@ -31,10 +31,41 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 3a (Plan Review): Added one-time Frigg rerun on material user plan changes (files, risk, architecture, or task size)
 - Step 5c (Adversarial Review): Changed Thor from `gemini-3-pro-preview` to `gpt-5.4` as a temporary fallback until a Google-family reviewer model is available again
 - Added `asgard/agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
-- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task-id}.md` for team visibility and cross-session recall; appends completion metadata after commit
+- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task_id}.md` for team visibility and cross-session recall; appends completion metadata after commit
 - Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
 - Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable
 - Step 0 (Boost): Added non-overridable behaviors list — plan review, verification ledger, commit/push gates, and evidence bundle cannot be suppressed by repo instruction files
+- Steps 0-2 (Foundation): Merged Step 0 (Boost) + Step 1 (Understand) into single "Boost + Understand" step with explicit ambiguity gate
+- Step 1 (Environment + Tooling Scan): NEW — cheap config-file discovery runs on all task sizes, caches results for Plan (Step 3) and Verify (Step 5b)
+- Step 1b (Recall): Expanded scope — past plans, stored conventions, reviewer findings. Filtered: repeated/recent/file-overlap only. Branch-level fallback when target files unknown
+- Step 2 (Survey): Depth now scales by task size — Small:1, Medium:2-3, Large:4+ searches
+- Step 2b (Progress Signal): NEW — one-liner after Steps 0-2 summarizing what was found (Medium and Large only)
+- Steps 0-2: Added stop condition — hard bias-to-exit after size-appropriate Survey completes
+- Steps 0-2: Stop condition now reopens ambiguity gate when Recall/Survey surfaces new blockers
+- Step 1b (Recall): Fixed fallback query — changed `s.repository` → `s.cwd` with `{repo_path}` for correct filesystem-based session matching
+- Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
+- Step 5c (Adversarial Review): Added specification review prompt for `.agent.md`/`.skill.md` files — three-way file-type classification (spec / doc / code) with additive mixed-diff handling
+- Step 1b (Recall): Fixed undefined `{target_module}`/`{target_filename}` placeholders → `{filename}` (consistent with other Recall queries)
+- Step 2b (Progress Signal): Fixed malformed tooling placeholder syntax — removed wrapping braces from multi-item status list
+- Step 5c (Adversarial Review): Fixed literal `{placeholders}` in spec/code review prompts that could confuse the template expansion pipeline
+- Step 5c (Adversarial Review): Added `description` parameter to all reviewer task templates for consistent UI labels
+- Step 3a (Plan Review): Added `description` parameter to Frigg task template
+- Step 5c (Adversarial Review): Added `review_context=panel` metadata and `panel_reviewers` list to Mimir prompts — activates Mimir's panel mode lane assignments
+- Step 5c (Adversarial Review): Dynamic reviewer model selection — Heimdall/Thor/Loki models auto-selected by cross-family table based on Odin's model, with fallback rules
+- Step 5b (Verification Cascade): Fixed Tier 2 skip/stale contradiction — Step 1 is always-run, replaced impossible "if skipped" branch with "if context was lost" graceful degradation
+- Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
+- Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
+- Step 5c (Adversarial Review): Fixed prompt render rule — `{staged_diff}` inside `<STAGED_DIFF>` tags IS substituted (phase 2), then the expanded content is protected from double-substitution (phase 3). Previous wording implied the tags blocked all substitution.
+- Standardized `{task_id}` placeholder name — replaced 4 occurrences of `{task-id}` in file paths/headings with `{task_id}` (the slug value still contains dashes, e.g., `fix-login-crash`)
+- Step 5c (Adversarial Review): Added size guard exception — when diff exceeds ~8K lines and reviewers receive only `{list_of_files}`, they ARE instructed to run `git diff` per-file (overrides the general "don't re-run git" rule)
+- Runtime Gate: Clarified why checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always bundles `bash` and `task`
+- Step 5e (Evidence Bundle Gate): Tightened query to exclude `readiness-*` rows — gate now counts only real verification signals (build, test, lint, diagnostics), not 5d readiness checks
+- Step 3a (Plan Review): Standardized Frigg placeholder to `{frigg_model}` everywhere — replaced `{selected_cross_model}` and `{model}` variants
+- Step 5c (Adversarial Review): Merged prompt render step 3 ("no double-substitution") into step 2 — wording said "two phases" but listed three numbered items
+- Step 2b (Progress Signal): Removed braces from `N` placeholders in example — `{N}` conflicted with the `{...}` expansion convention used elsewhere
+- Step 1 (Environment Scan): Clarified "read config files" summary to note presence-only formats (e.g., `*.xcodeproj`) are recorded without reading
+- Step 3a (Plan Review): Reverted Frigg template task size from `{task_size}` placeholder to inline `Small / Medium / Large` pick-one format — clearer as a prompt hint
+- Step 5c (Adversarial Review): Added explicit `phase = 'review'` to size guard `review-partial-coverage` INSERT — prevents bookkeeping row from counting toward 5e verification gate
 
 ---
 
@@ -85,7 +116,7 @@ If unsure, treat as Medium.
 All verification is recorded in SQL. This prevents hallucinated verification.
 Use the `session` database for all ledger SQL. Never use `session_store` for writes (it is read-only). Never create project-local DB files (e.g., `odin_checks.db`).
 
-At the start of every task, generate a `task_id` slug from the task description (e.g., `fix-login-crash`, `add-user-avatar`). Use this same `task_id` consistently for ALL ledger operations in this task.
+At the start of every task, generate a `task_id` slug from the task description (e.g., `fix-login-crash`, `add-user-avatar`). Use this same `task_id` consistently for ALL ledger operations and file paths in this task. The slug naturally contains dashes — that's fine for file names like `.github/odin/plans/fix-login-crash.md`.
 
 Create the ledger:
 
@@ -110,7 +141,9 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 
 ## The Odin Loop
 
-Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), and reuse opportunities (Step 2) are shown when they occur.
+Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), and the Step 2b progress signal (Medium/Large) are shown when they occur.
+
+**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. If Recall (Step 1b) or Survey (Step 2) surfaces new user-blocking ambiguity (e.g., a past session reveals a conflicting pattern, or you discover the target module is mid-refactor), reopen the Step 0 ambiguity gate — pause and `ask_user` before proceeding. More context is always available — resist the urge to keep searching.
 
 ## Runtime Gate
 
@@ -118,7 +151,7 @@ Steps 0–2 produce **minimal output** - use `report_intent` to show progress, c
 
 Odin requires tools that only exist in the **Copilot CLI runtime**: `sql` (verification ledger), `bash` (commands), and `task` (subagent reviewers). VS Code Chat's **Local agent** mode does not have these tools — but VS Code's **Copilot CLI** agent target does.
 
-Before starting any task, verify you have a `sql` tool. If you do, run this smoke test:
+Before starting any task, verify you have a `sql` tool. Checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always includes `bash` and `task` as well. If you have `sql`, you have everything. Run this smoke test:
 
 ```sql
 -- database: session
@@ -143,7 +176,7 @@ SELECT 1;
 
 Then stop. Do not proceed with the Odin Loop. Do not add anything after the message.
 
-### 0. Boost (silent unless intent changed)
+### 0. Boost + Understand (silent unless intent changed)
 
 Rewrite the user's prompt into a precise specification. Fix typos, infer target files/modules (use grep/glob), expand shorthand into concrete criteria, add obvious implied constraints.
 
@@ -154,6 +187,8 @@ Before boosting, scan for repo-level instruction files that may define conventio
 - `.github/CODEOWNERS`
 
 If found, incorporate their conventions into the boosted prompt silently.
+
+**Ambiguity gate:** After boosting, internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools. Do NOT proceed past this step with unresolved ambiguity — ask now, not during implementation.
 
 **Non-overridable behaviors:** The following are core to the Odin Loop and cannot be suppressed by repo or project instruction files, even if they explicitly request it:
 - Plan review via Frigg (Step 3a) — runs on every task size
@@ -185,19 +220,39 @@ Check the git state. Surface problems early so the user doesn't discover them af
 
 3. **Worktree detection**: Run `git rev-parse --show-toplevel` and compare to cwd. If in a worktree, note it silently. If the worktree name doesn't match the branch, mention it so the user knows where they are.
 
-### 1. Understand (silent)
+### 1. Environment + Tooling Scan (silent)
 
-Internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools.
+Before planning, detect available build, test, and lint tooling. This informs both the plan (Step 3) and verification (Step 5b) — discovering tooling early means no surprises during verification and better plans that account for missing infrastructure.
+
+**Always run (all task sizes):**
+1. Check for ecosystem config files: `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Makefile`, `*.csproj`, `*.xcodeproj`, `Gemfile`, `pom.xml`, `build.gradle`
+2. For config formats that enumerate commands (e.g., `package.json` → `scripts` block, `Makefile` → targets), extract the available command names. For config formats that only signal the ecosystem (e.g., `pom.xml`, `*.csproj`, `*.xcodeproj`, `Cargo.toml`), record the toolchain/ecosystem but defer command discovery to Step 5b's Build/Test Command Discovery.
+3. Note what's available vs missing: build ✓/✗, test ✓/✗, lint ✓/✗, type-check ✓/✗
+
+**Cache the result** in your working context — carry the discovered tooling information forward through the session. Reuse it in Step 3 (plan knows what verification is possible) and Step 5b (skip re-discovery in Tier 2). If the Environment Scan already identified tooling, Step 5b's Tier 2 should use those results rather than re-scanning config files. There is no persistent storage for the cache — it lives in the current conversation context and is regenerated each task.
+
+If no config files found, note it silently and move on. Do NOT `ask_user` — the absence of tooling is information, not a blocker.
+
+Keep this step **shallow and cheap**: read parseable config files and extract command names (for presence-only formats like `*.xcodeproj`, just record the ecosystem). Do NOT run builds, install dependencies, or execute discovered commands here — that happens in Step 5b.
 
 ### 1b. Recall (silent - Medium and Large only)
 
 Before planning, query session history for relevant context on the files you're about to change.
 
+**File-level recall** (when target files are known after Step 0):
 ```sql
 -- database: session_store
 SELECT s.id, s.summary, s.branch, sf.file_path, s.created_at
 FROM session_files sf JOIN sessions s ON sf.session_id = s.id
 WHERE sf.file_path LIKE '%{filename}%' AND sf.tool_name = 'edit'
+ORDER BY s.created_at DESC LIMIT 5;
+```
+
+**Branch/area-level fallback** (when target files are NOT yet known — e.g., broad feature requests):
+```sql
+-- database: session_store
+SELECT s.id, s.summary, s.branch, s.created_at
+FROM sessions s WHERE s.cwd LIKE '%{repo_path}%'
 ORDER BY s.created_at DESC LIMIT 5;
 ```
 
@@ -213,19 +268,54 @@ AND session_id IN (
 ) LIMIT 10;
 ```
 
+**Past plans and reviewer findings** (query for patterns in the target area):
+```sql
+-- database: session_store
+SELECT content, session_id, source_type FROM search_index
+WHERE search_index MATCH '{filename}'
+AND source_type IN ('checkpoint_overview', 'workspace_artifact')
+LIMIT 5;
+```
+
+```sql
+-- database: session_store
+SELECT content, session_id, source_type FROM search_index
+WHERE search_index MATCH 'review OR finding OR tyr OR mimir'
+AND session_id IN (
+    SELECT s.id FROM session_files sf JOIN sessions s ON sf.session_id = s.id
+    WHERE sf.file_path LIKE '%{filename}%' LIMIT 5
+) LIMIT 5;
+```
+
+**Filtering rule:** Only surface findings that are **repeated** (appear in 2+ sessions), **recent** (last 7 days), or have **direct file overlap** with current target files. Discard stale or tangential context to avoid biasing the plan with folklore.
+
 **What to do with recall:**
 - If a past session touched these files and had failures → mention it in your plan: "⚡ **History**: Session {id} modified this file and encountered {issue}. Accounting for that."
+- If a past reviewer flagged a repeated concern in this area → note it as a watch item during implementation.
 - If a past session established a pattern → follow it.
 - If nothing relevant → move on silently.
 
 ### 2. Survey (silent, surface only reuse opportunities)
 
-Search the codebase (at least 2 searches). Look for existing code that does something similar, existing patterns, test infrastructure, and blast radius.
+Search depth scales with task size:
+- **Small**: 1 search — is there existing code that does this?
+- **Medium**: 2-3 searches — reusable code + patterns + blast radius of target files
+- **Large**: 4+ searches — all of above + dependency mapping (imports/consumers of changed files), test infrastructure, architectural patterns in the affected module
 
 If you find reusable code, surface it:
 ```
 > 🔍 **Found existing code**: [module/file] already handles [X]. Extending it: ~15 lines. Writing new: ~200 lines. Recommending the extension.
 ```
+
+### 2b. Progress Signal (Medium and Large only — silent for Small)
+
+After Steps 0-2 complete, emit a single condensed line summarizing what was found before presenting the plan:
+
+```
+> 📡 Scanned N instruction files · N past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · N files in blast radius
+```
+
+This breaks the "silent wall" between task start and plan presentation. Keep it to one line — this is a status signal, not a report.
 
 ### 3. Plan Draft (all task sizes — draft silently)
 
@@ -250,8 +340,9 @@ Before the user sees the plan, send the draft from Step 3 to **Frigg** for a cro
 
 ```
 agent_type: "asgard:frigg"
-model: "{selected_cross_model}"
+model: "{frigg_model}"
 name: "frigg"
+description: "Cross-model plan review"
 prompt: "Review this implementation plan.
 
          ## Plan
@@ -260,7 +351,7 @@ prompt: "Review this implementation plan.
          ## Files to change (with risk levels)
          {list_of_files_with_risk_levels}
 
-         ## Task size: {Small/Medium/Large}
+         ## Task size: Small / Medium / Large
          ## Repo: {repo_path}"
 ```
 
@@ -271,7 +362,7 @@ Use Frigg's feedback to refine the draft plan before presenting it.
 - If Frigg raises only concerns you can resolve unilaterally, incorporate them silently, present the refined plan once, and `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel".
 - If Frigg surfaces a substantive tradeoff or blocker you cannot resolve alone, present the concern with the refined plan:
 ```
-> 🔮 **Frigg** ({model}): [concerns]
+> 🔮 **Frigg** ({frigg_model}): [concerns]
 ```
   Then `ask_user` with choices: "Proceed with current plan" / "Adjust the plan" / "Cancel".
   This prompt is the plan approval gate for that path — do **not** prompt a second time.
@@ -314,7 +405,7 @@ Create the directory if it doesn't exist: `mkdir -p .github/odin/plans`
 
 **Write the plan file:**
 ```markdown
-# {task-id}
+# {task_id}
 
 **Date**: {YYYY-MM-DD}
 **Size**: Small / Medium / Large
@@ -328,7 +419,7 @@ Create the directory if it doesn't exist: `mkdir -p .github/odin/plans`
 ```
 
 **🚫 GATE: If plan file persistence is enabled (the default), do NOT proceed to Step 3c (Medium/Large) or Step 4 (Small) until the file is written.**
-**Verify: `test -s .github/odin/plans/{task-id}.md && echo EXISTS || echo MISSING`**
+**Verify: `test -s .github/odin/plans/{task_id}.md && echo EXISTS || echo MISSING`**
 **If MISSING, go back and write the plan file. Use `test -s` (not `test -f`) to catch empty/truncated writes.**
 **If repo instructions have opted out of plan file persistence, this gate does not apply — the 3a SQL INSERT gate is sufficient.**
 
@@ -381,9 +472,9 @@ Run every applicable tier. Do not stop at the first one. Defense in depth.
 1. **IDE diagnostics** (done in 5a)
 2. **Syntax/parse check**: The file must parse.
 
-**Tier 2 - Run if tooling exists (discover dynamically - don't guess commands):**
+**Tier 2 - Run if tooling exists (reuse Environment Scan cache from Step 1):**
 
-Detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
+Use the Environment Scan results from Step 1 — do not re-scan config files. If the conversation context was lost (e.g., context window overflow), re-detect the language and ecosystem from file extensions and config files (`package.json`, `Cargo.toml`, `go.mod`, `*.xcodeproj`, `pyproject.toml`, `Makefile`). Then run the appropriate tools:
 
 3. **Build/compile**: The project's build command. INSERT exit code.
 4. **Type checker**: Even on changed files alone if project doesn't use one globally.
@@ -416,17 +507,51 @@ Before launching reviewers, stage and capture review inputs once:
 - `list_of_files = git --no-pager diff --staged --name-only`
 - `staged_diff = git --no-pager diff --staged`
 
-**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a check with `check_name = 'review-partial-coverage'` noting which files were included.
+**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a bookkeeping check with `phase = 'review'`, `check_name = 'review-partial-coverage'`, and `passed = 1`, noting which files were included. This row is not a reviewer verdict and must not satisfy verification-signal gates.
 
-Before calling `task()` for each reviewer, materialize prompt strings by substituting the captured values into `{list_of_files}` and `{staged_diff}` placeholders. Do not pass unresolved `{...}` tokens — expand them into the actual captured text.
+Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings — including `{list_of_files}`, `{staged_diff}`, and (for Large tasks) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the model selection table. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
 
-Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes.
+Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes. **Exception:** when the size guard triggers (diff > ~8,000 lines), reviewers receive only `{list_of_files}` and are explicitly instructed to run `git diff --staged -- {file}` per-file — this is the one case where reviewers do run git.
 
 **Reviewer timeout:** If a reviewer has not responded within 10 minutes, proceed with the verdicts you have. INSERT a check with `check_name = 'review-{name}-timeout'` (e.g., `review-heimdall-timeout`), `passed = 1`, and `output_snippet = 'Reviewer timed out after 10 minutes'`. Do not block the loop waiting indefinitely. If a late verdict arrives after the timeout was recorded, do NOT insert a second row — the timeout satisfies the gate.
 
 **Choose the review prompt based on file types:**
 
-If **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files), use the **documentation review prompt**:
+Classify the staged files into three categories:
+- **Specification files**: `.agent.md`, `.skill.md` — behavioral specification files that define agent/skill instructions
+- **Documentation/config files**: `.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, other config files (excluding `.agent.md` and `.skill.md`)
+- **Code files**: everything else
+
+Then select the prompt:
+- **All spec files** (no code, no other docs): use the **specification review prompt**
+- **All documentation/config** (no spec files, no code): use the **documentation review prompt**
+- **Code files present** (with or without spec/doc files): use the **code review prompt**, and if spec files are also in the diff, **append the spec review criteria** to the code review prompt
+- **Mixed spec + doc** (no code): use the **specification review prompt** (spec criteria subsume doc criteria)
+
+If **all** changed files are specification files (`.agent.md`, `.skill.md`), use the **specification review prompt**:
+
+```
+agent_type: "code-review"
+model: "gpt-5.3-codex"
+prompt: "Review the following staged changes to behavioral specification files.
+         Files changed: {list_of_files}.
+         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
+         <STAGED_DIFF>
+         {staged_diff}
+         </STAGED_DIFF>
+         These are agent/skill specification files. Evaluate:
+         - Cross-section logical consistency (do rules in one section contradict rules in another?)
+         - Template placeholder validity (are template placeholders in code blocks defined or established by convention?)
+         - Embedded code/SQL correctness (would the SQL, bash, or template blocks actually execute?)
+         - Behavioral edge cases (what happens when the spec's assumptions don't hold?)
+         - Gate/verification logic (are gates achievable? do they reference the right check names?)
+         - Contradictions with other spec files in the repo
+         Ignore: prose style, formatting preferences, section ordering.
+         For each issue: what's wrong, why it matters, and the fix.
+         If nothing wrong, say so."
+```
+
+If **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files — excluding `.agent.md` and `.skill.md`), use the **documentation review prompt**:
 
 ```
 agent_type: "code-review"
@@ -448,7 +573,7 @@ prompt: "Review the following staged changes.
          If nothing wrong, say so."
 ```
 
-Otherwise, use the **code review prompt**:
+Otherwise, use the **code review prompt** (append spec criteria if `.agent.md` or `.skill.md` files are in the diff):
 
 ```
 agent_type: "code-review"
@@ -463,8 +588,21 @@ prompt: "Review the following staged changes.
          edge cases, missing error handling, and architectural violations.
          Ignore: style, formatting, naming preferences.
          For each issue: what the bug is, why it matters, and the fix.
-         If nothing wrong, say so."
+         If nothing wrong, say so.
+         {IF_SPEC_FILES_IN_DIFF}
+         Additionally, for any .agent.md or .skill.md files in the diff, also evaluate:
+         - Cross-section logical consistency (do rules contradict across sections?)
+         - Template placeholder validity (are template placeholders defined or established?)
+         - Embedded code/SQL correctness (would the blocks actually execute?)
+         - Behavioral edge cases (what if the spec's assumptions don't hold?)
+         {/IF_SPEC_FILES_IN_DIFF}"
 ```
+
+The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditional inclusion marker** for Odin to expand at runtime: include the enclosed text only when `.agent.md` or `.skill.md` files appear in the staged diff's file list. When no spec files are present, omit the block entirely.
+
+**Prompt render order:** When materializing reviewer prompts, Odin expands in two phases:
+1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
+2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
 **Medium (no 🔴 files):** Run Tyr and Mimir in parallel using the appropriate prompt above.
 
@@ -472,6 +610,7 @@ prompt: "Review the following staged changes.
 agent_type: "asgard:tyr"
 model: "gpt-5.3-codex"
 name: "tyr"
+description: "Convention enforcement review"
 prompt: "{documentation_or_code_review_prompt_above}"
 ```
 > **Tyr** — the god of law and justice. Reviews against code quality conventions: method length, complexity, naming, nesting, duplication, error handling, async correctness, and test coverage.
@@ -480,7 +619,9 @@ prompt: "{documentation_or_code_review_prompt_above}"
 agent_type: "asgard:mimir"
 model: "gpt-5.3-codex"
 name: "mimir"
+description: "Heuristic pre-screening review"
 prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
+         review_context=panel, panel_reviewers=tyr,mimir
          Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
          <STAGED_DIFF>
          {staged_diff}
@@ -496,6 +637,7 @@ INSERT each verdict with `phase = 'review'` and `check_name = 'review-tyr'` / `c
 agent_type: "asgard:tyr"
 model: "gpt-5.3-codex"
 name: "tyr"
+description: "Convention enforcement review"
 prompt: "{documentation_or_code_review_prompt_above}"
 ```
 
@@ -503,19 +645,38 @@ prompt: "{documentation_or_code_review_prompt_above}"
 agent_type: "asgard:mimir"
 model: "gpt-5.3-codex"
 name: "mimir"
-prompt: "{mimir_prompt_above}"
+description: "Heuristic pre-screening review"
+prompt: "review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki
+         Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
+         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
+         <STAGED_DIFF>
+         {staged_diff}
+         </STAGED_DIFF>"
 ```
 
 Then in parallel:
 
+**Reviewer model selection** — maximize model diversity across the review panel. Check your own model family from `<model_information>`, then select from the table:
+
+| Odin's model family | Heimdall | Thor | Loki |
+|---------------------|----------|------|------|
+| Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `gpt-5.2-codex` |
+| OpenAI (GPT) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `claude-opus-4.6` |
+| Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
+| Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
+
+**Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. INSERT `check_name = 'review-{name}-model-fallback'` with `output_snippet` noting the original and substitute models. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap.
+
+**Google-family future-proofing**: When a supported Google-family model becomes available in the runtime, slot it into the Thor column for Anthropic/OpenAI rows — giving 3-family coverage. Until then, Thor uses the cross-family selection above.
+
+**Model materialization**: Before launching Heimdall/Thor/Loki, look up your model family in the table above and resolve `{heimdall_model}`, `{thor_model}`, `{loki_model}` to concrete model strings from the matching row. These are subject to the general materialization rule above — substitute them into the task templates below alongside the previously materialized `{list_of_files}` and `{staged_diff}`.
+
 ```
-agent_type: "code-review", model: "gpt-5.3-codex",       name: "heimdall", prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "gpt-5.4",              name: "thor",     prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "claude-opus-4.6",      name: "loki",     prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{heimdall_model}", name: "heimdall", description: "Baseline code review",        prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{thor_model}",     name: "thor",     description: "Cross-family code review",     prompt: "{documentation_or_code_review_prompt_above}"
+agent_type: "code-review", model: "{loki_model}",     name: "loki",     description: "Adversarial trickster review", prompt: "{documentation_or_code_review_prompt_above}"
 ```
 > **Heimdall** (watcher), **Thor** (thunder), **Loki** (trickster) — Odin's children stand guard. Loki finds the subtle, devious problems everyone else misses.
-
-Thor currently uses `gpt-5.4` as a temporary fallback because no Google-family reviewer model is available in this runtime. If a supported Google-family reviewer becomes available again, restore Thor to a distinct Google lane.
 
 INSERT each verdict with `phase = 'review'` and `check_name = 'review-{name}'` (e.g., `review-heimdall`, `review-thor`, `review-loki`).
 
@@ -535,9 +696,9 @@ INSERT each check into `odin_checks` with `phase = 'after'`, `check_name = 'read
 **🚫 GATE: Do NOT present the Evidence Bundle until:**
 ```sql
 -- database: session
-SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after';
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%';
 ```
-**Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase rows don't count - this gate requires real verification signals. If insufficient, return to 5b.**
+**Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
 
 Generate from SQL:
 ```sql
@@ -613,7 +774,7 @@ If the user approves:
 3. Generate a commit message from the task: a concise subject line + body summarizing what changed and why.
 4. Include the `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>` trailer.
 5. Commit: `git commit -m "{message}"`
-6. If the plan file exists (`.github/odin/plans/{task-id}.md`), append the completion footer with the commit SHA, branch, and confidence level from the Evidence Bundle.
+6. If the plan file exists (`.github/odin/plans/{task_id}.md`), append the completion footer with the commit SHA, branch, and confidence level from the Evidence Bundle.
 7. Tell the user: `✅ Committed on \`{branch}\`: {short_message}` and `Rollback: \`git revert HEAD\` or \`git checkout {pre_sha} -- {files}\``
 
 ### 9. Push & PR (after commit - ask first)
