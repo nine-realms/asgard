@@ -41,7 +41,10 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 2 (Survey): Depth now scales by task size — Small:1, Medium:2-3, Large:4+ searches
 - Step 2b (Progress Signal): NEW — one-liner after Steps 0-2 summarizing what was found (Medium and Large only)
 - Steps 0-2: Added stop condition — hard bias-to-exit after size-appropriate Survey completes
+- Steps 0-2: Stop condition now reopens ambiguity gate when Recall/Survey surfaces new blockers
+- Step 1b (Recall): Fixed fallback query — changed `s.repository` → `s.cwd` with `{repo_path}` for correct filesystem-based session matching
 - Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
+- Step 5c (Adversarial Review): Added specification review prompt for `.agent.md`/`.skill.md` files — three-way file-type classification (spec / doc / code) with additive mixed-diff handling
 
 ---
 
@@ -119,7 +122,7 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 
 Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), and the Step 2b progress signal (Medium/Large) are shown when they occur.
 
-**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. More context is always available — resist the urge to keep searching.
+**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. If Recall (Step 1b) or Survey (Step 2) surfaces new user-blocking ambiguity (e.g., a past session reveals a conflicting pattern, or you discover the target module is mid-refactor), reopen the Step 0 ambiguity gate — pause and `ask_user` before proceeding. More context is always available — resist the urge to keep searching.
 
 ## Runtime Gate
 
@@ -228,7 +231,7 @@ ORDER BY s.created_at DESC LIMIT 5;
 ```sql
 -- database: session_store
 SELECT s.id, s.summary, s.branch, s.created_at
-FROM sessions s WHERE s.repository LIKE '%{repo_name}%'
+FROM sessions s WHERE s.cwd LIKE '%{repo_path}%'
 ORDER BY s.created_at DESC LIMIT 5;
 ```
 
@@ -492,7 +495,41 @@ Pass both materialized values to every reviewer prompt. The provided diff is the
 
 **Choose the review prompt based on file types:**
 
-If **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files), use the **documentation review prompt**:
+Classify the staged files into three categories:
+- **Specification files**: `.agent.md`, `.skill.md` — behavioral specification files that define agent/skill instructions
+- **Documentation/config files**: `.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, other config files (excluding `.agent.md` and `.skill.md`)
+- **Code files**: everything else
+
+Then select the prompt:
+- **All spec files** (no code, no other docs): use the **specification review prompt**
+- **All documentation/config** (no spec files, no code): use the **documentation review prompt**
+- **Code files present** (with or without spec/doc files): use the **code review prompt**, and if spec files are also in the diff, **append the spec review criteria** to the code review prompt
+- **Mixed spec + doc** (no code): use the **specification review prompt** (spec criteria subsume doc criteria)
+
+If **all** changed files are specification files (`.agent.md`, `.skill.md`), use the **specification review prompt**:
+
+```
+agent_type: "code-review"
+model: "gpt-5.3-codex"
+prompt: "Review the following staged changes to behavioral specification files.
+         Files changed: {list_of_files}.
+         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
+         <STAGED_DIFF>
+         {staged_diff}
+         </STAGED_DIFF>
+         These are agent/skill specification files. Evaluate:
+         - Cross-section logical consistency (do rules in one section contradict rules in another?)
+         - Template placeholder validity (are {placeholders} in code blocks defined or established by convention?)
+         - Embedded code/SQL correctness (would the SQL, bash, or template blocks actually execute?)
+         - Behavioral edge cases (what happens when the spec's assumptions don't hold?)
+         - Gate/verification logic (are gates achievable? do they reference the right check names?)
+         - Contradictions with other spec files in the repo
+         Ignore: prose style, formatting preferences, section ordering.
+         For each issue: what's wrong, why it matters, and the fix.
+         If nothing wrong, say so."
+```
+
+If **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files — excluding `.agent.md` and `.skill.md`), use the **documentation review prompt**:
 
 ```
 agent_type: "code-review"
@@ -514,7 +551,7 @@ prompt: "Review the following staged changes.
          If nothing wrong, say so."
 ```
 
-Otherwise, use the **code review prompt**:
+Otherwise, use the **code review prompt** (append spec criteria if `.agent.md` or `.skill.md` files are in the diff):
 
 ```
 agent_type: "code-review"
@@ -529,8 +566,22 @@ prompt: "Review the following staged changes.
          edge cases, missing error handling, and architectural violations.
          Ignore: style, formatting, naming preferences.
          For each issue: what the bug is, why it matters, and the fix.
-         If nothing wrong, say so."
+         If nothing wrong, say so.
+         {IF_SPEC_FILES_IN_DIFF}
+         Additionally, for any .agent.md or .skill.md files in the diff, also evaluate:
+         - Cross-section logical consistency (do rules contradict across sections?)
+         - Template placeholder validity (are {placeholders} defined or established?)
+         - Embedded code/SQL correctness (would the blocks actually execute?)
+         - Behavioral edge cases (what if the spec's assumptions don't hold?)
+         {/IF_SPEC_FILES_IN_DIFF}"
 ```
+
+The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditional inclusion marker** for Odin to expand at runtime: include the enclosed text only when `.agent.md` or `.skill.md` files appear in the staged diff's file list. When no spec files are present, omit the block entirely.
+
+**Prompt render order:** When materializing reviewer prompts, Odin expands in two phases:
+1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
+2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, etc. with captured values.
+3. **Literal brace text is never substituted**: text inside backtick-fenced inline code (e.g., `` `{placeholders}` ``) or inside `<STAGED_DIFF>` tags is passed through verbatim — it is prose for the reviewer to read, not a variable to expand.
 
 **Medium (no 🔴 files):** Run Tyr and Mimir in parallel using the appropriate prompt above.
 
