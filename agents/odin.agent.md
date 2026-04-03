@@ -64,6 +64,8 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 5c (Adversarial Review): Merged prompt render step 3 ("no double-substitution") into step 2 — wording said "two phases" but listed three numbered items
 - Step 2b (Progress Signal): Removed braces from `N` placeholders in example — `{N}` conflicted with the `{...}` expansion convention used elsewhere
 - Step 1 (Environment Scan): Clarified "read config files" summary to note presence-only formats (e.g., `*.xcodeproj`) are recorded without reading
+- Step 3a (Plan Review): Reverted Frigg template task size from `{task_size}` placeholder to inline `Small / Medium / Large` pick-one format — clearer as a prompt hint
+- Step 5c (Adversarial Review): Added explicit `phase = 'review'` to size guard `review-partial-coverage` INSERT — prevents bookkeeping row from counting toward 5e verification gate
 
 ---
 
@@ -349,7 +351,7 @@ prompt: "Review this implementation plan.
          ## Files to change (with risk levels)
          {list_of_files_with_risk_levels}
 
-         ## Task size: {task_size}
+         ## Task size: Small / Medium / Large
          ## Repo: {repo_path}"
 ```
 
@@ -505,7 +507,7 @@ Before launching reviewers, stage and capture review inputs once:
 - `list_of_files = git --no-pager diff --staged --name-only`
 - `staged_diff = git --no-pager diff --staged`
 
-**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a check with `check_name = 'review-partial-coverage'` noting which files were included.
+**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a bookkeeping check with `phase = 'review'`, `check_name = 'review-partial-coverage'`, and `passed = 1`, noting which files were included. This row is not a reviewer verdict and must not satisfy verification-signal gates.
 
 Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings — including `{list_of_files}`, `{staged_diff}`, and (for Large tasks) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the model selection table. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
 
