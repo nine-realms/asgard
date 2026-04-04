@@ -62,6 +62,18 @@ Agent `.agent.md` files are the most critical files in this repo — they define
 - **Commits**: Always include `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 - **Primary branch**: `main`
 
+## Versioning
+
+The plugin version lives in `plugin.json` — this is the **sole version source** for Copilot CLI plugin installs. Bump it when agent or skill files change:
+
+- **Patch** (e.g., `0.8.0` → `0.8.1`): Any change to `agents/*.agent.md` or `skills/*/SKILL.md` — the default bump.
+- **Minor** (e.g., `0.8.1` → `0.9.0`): New agent, new skill, new step in the Odin Loop, or behavioral feature addition. Overrides patch.
+- **Major** (e.g., `0.9.0` → `1.0.0`): Breaking changes to agent behavior that require user adaptation. Overrides minor.
+
+When in doubt, bump patch. Forgetting to bump means users running `copilot plugin install` won't pick up the change.
+
+**Always update `CHANGELOG.md`** when committing changes to agent files, skill files, or plugin configuration. Each entry should briefly describe what changed and why. The changelog is the human-readable release history — if it's not in the changelog, it didn't happen.
+
 ## Testing Changes
 
 After modifying agents:

@@ -58,3 +58,8 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 3a (Plan Review): Reverted Frigg template task size from `{task_size}` placeholder to inline `Small / Medium / Large` pick-one format — clearer as a prompt hint
 - Step 5c (Adversarial Review): Added explicit `phase = 'review'` to size guard `review-partial-coverage` INSERT — prevents bookkeeping row from counting toward 5e verification gate
 - Step 8 (Commit): Added pre-commit review gate — verifies adversarial reviews ran before offering to commit (Medium/Large). Catches the case where Step 5c is skipped entirely, since 5c's own gate only fires on entry.
+- Restructured `odin.agent.md` for loop start reliability — promoted MANDATORY FIRST ACTIONS near the top, moved Runtime Gate up, and returned Pushback to its reference position (primacy effect for entry instructions)
+- Added Step 10 (PR Feedback Re-entry): PR review comments are tasks, not quick fixes — re-enters the sized loop with `{task_id}-pr-feedback` convention
+- Step 5c (Adversarial Review): Added primary/fallback model selection for Tyr (`gpt-5.3-codex` / `gpt-5.4-mini`) and Mimir (`claude-sonnet-4.6` / `gpt-5.4`) in `odin-review-prompts` skill
+- Added versioning convention to `.github/copilot-instructions.md` — patch bump for agent/skill changes, minor for features, major for breaking changes
+- Bumped plugin version to `0.8.0`
