@@ -14,14 +14,14 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 8 (Commit): Changed from auto-commit to always `ask_user` before committing
 - Added Step 9: Push & PR creation with `ask_user` gate
 - Added "Subagent Strategy" section with delegation guidelines
-- Added Context7 MCP server in `asgard/.mcp.json` (pinned version)
+- Added Context7 MCP server in `.mcp.json` (pinned version)
 - Added Runtime Gate: environment check — fails fast when required tools (`sql`, `bash`, `task`) are missing (e.g., VS Code Chat Local agent mode)
 - Step 3 (Plan): Changed from silent-for-Medium to always user-visible before implementation; all task sizes see the Frigg-refined plan rather than the first draft
 - Added Step 3a: Cross-model plan review via Frigg subagent (`asgard:frigg`) — model auto-selected from a different family than Odin's current model and run before plan presentation on all task sizes
 - Step 3a (Plan Review): Added verification gate — Frigg verdict must be INSERTed into `odin_checks` before proceeding to 3b (prevents silent skipping)
 - Step 3a (Plan Review): Added one-time Frigg rerun on material user plan changes (files, risk, architecture, or task size)
 - Step 5c (Adversarial Review): Changed Thor from `gemini-3-pro-preview` to `gpt-5.4` as a temporary fallback until a Google-family reviewer model is available again
-- Added `asgard/agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
+- Added `agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
 - Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task_id}.md` for team visibility and cross-session recall; appends completion metadata after commit
 - Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
 - Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable

@@ -457,7 +457,7 @@ Pass both materialized values to every reviewer prompt. The provided diff is the
 
 **Load review instructions:** Invoke the `odin-review-prompts` skill to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute.
 
-If `odin-review-prompts` is not in `<available_skills>` or skill invocation fails, fall back to reading the file directly via `view` with the absolute path (e.g., `view("{repo_root}/skills/odin-review-prompts.skill.md")`). If that also fails, HALT and report the error — do not proceed without review templates.
+If `odin-review-prompts` is not in `<available_skills>` or skill invocation fails, HALT and report that the required skill could not be loaded. Do not proceed without review templates.
 
 After loading the skill content, follow its instructions to:
 1. Classify staged files (spec / doc / code)
