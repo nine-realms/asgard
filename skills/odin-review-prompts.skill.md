@@ -176,7 +176,7 @@ Maximize model diversity across the review panel. Check Odin's own model family 
 | Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
 | Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
 
-**Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. INSERT `check_name = 'review-{name}-model-fallback'` with `output_snippet` noting the original and substitute models. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap.
+**Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model, the substitute model, and any forced overlap. This row is bookkeeping — not a review verdict. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap in `output_snippet`.
 
 **Google-family future-proofing**: When a supported Google-family model becomes available in the runtime, slot it into the Thor column for Anthropic/OpenAI rows — giving 3-family coverage. Until then, Thor uses the cross-family selection above.
 

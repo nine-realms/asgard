@@ -455,9 +455,9 @@ Pass both materialized values to every reviewer prompt. The provided diff is the
 
 **Reviewer timeout:** If a reviewer has not responded within 10 minutes, proceed with the verdicts you have. INSERT a check with `check_name = 'review-{name}-timeout'` (e.g., `review-heimdall-timeout`), `passed = 1`, and `output_snippet = 'Reviewer timed out after 10 minutes'`. Do not block the loop waiting indefinitely. If a late verdict arrives after the timeout was recorded, do NOT insert a second row — the timeout satisfies the gate.
 
-**Load review instructions:** Invoke the `odin-review-prompts` skill to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute.
+**Load review instructions:** Invoke the `odin-review-prompts` skill unconditionally to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. Just call `skill("odin-review-prompts")` directly.
 
-If `odin-review-prompts` is not in `<available_skills>` or skill invocation fails, HALT and report that the required skill could not be loaded. Do not proceed without review templates.
+If the skill invocation fails, HALT and report that the required skill could not be loaded. Do not proceed without review templates.
 
 After loading the skill content, follow its instructions to:
 1. Classify staged files (spec / doc / code)
