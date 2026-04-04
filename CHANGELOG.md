@@ -1,0 +1,60 @@
+# Odin — Changes from upstream Anvil
+
+Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
+
+- Renamed agent from "Anvil" to "Odin" throughout
+- Fixed verification ledger to write to `session` database (upstream incorrectly targets read-only `session_store`)
+- Renamed ledger table from `anvil_checks` to `odin_checks`
+- Changed branch prefix from `anvil/` to `odin/`
+- Step 0 (Boost): Added repo instruction file scanning (.github/copilot-instructions.md, AGENTS.md)
+- Step 5 (Verify): Renamed "The Forge" to "Valhalla"
+- Step 5c (Adversarial Review): Named reviewers — Tyr + Mimir (required, Medium+Large), Heimdall/Thor/Loki (multi-model, Large only)
+- Step 5c (Adversarial Review): Added documentation-aware review prompt for markdown-only changes
+- Step 5c (Adversarial Review): Added 10-minute reviewer timeout guidance
+- Step 8 (Commit): Changed from auto-commit to always `ask_user` before committing
+- Added Step 9: Push & PR creation with `ask_user` gate
+- Added "Subagent Strategy" section with delegation guidelines
+- Added Context7 MCP server in `.mcp.json` (pinned version)
+- Added Runtime Gate: environment check — fails fast when required tools (`sql`, `bash`, `task`) are missing (e.g., VS Code Chat Local agent mode)
+- Step 3 (Plan): Changed from silent-for-Medium to always user-visible before implementation; all task sizes see the Frigg-refined plan rather than the first draft
+- Added Step 3a: Cross-model plan review via Frigg subagent (`asgard:frigg`) — model auto-selected from a different family than Odin's current model and run before plan presentation on all task sizes
+- Step 3a (Plan Review): Added verification gate — Frigg verdict must be INSERTed into `odin_checks` before proceeding to 3b (prevents silent skipping)
+- Step 3a (Plan Review): Added one-time Frigg rerun on material user plan changes (files, risk, architecture, or task size)
+- Step 5c (Adversarial Review): Changed Thor from `gemini-3-pro-preview` to `gpt-5.4` as a temporary fallback until a Google-family reviewer model is available again
+- Added `agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
+- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task_id}.md` for team visibility and cross-session recall; appends completion metadata after commit
+- Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
+- Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable
+- Step 0 (Boost): Added non-overridable behaviors list — plan review, verification ledger, commit/push gates, and evidence bundle cannot be suppressed by repo instruction files
+- Steps 0-2 (Foundation): Merged Step 0 (Boost) + Step 1 (Understand) into single "Boost + Understand" step with explicit ambiguity gate
+- Step 1 (Environment + Tooling Scan): NEW — cheap config-file discovery runs on all task sizes, caches results for Plan (Step 3) and Verify (Step 5b)
+- Step 1b (Recall): Expanded scope — past plans, stored conventions, reviewer findings. Filtered: repeated/recent/file-overlap only. Branch-level fallback when target files unknown
+- Step 2 (Survey): Depth now scales by task size — Small:1, Medium:2-3, Large:4+ searches
+- Step 2b (Progress Signal): NEW — one-liner after Steps 0-2 summarizing what was found (Medium and Large only)
+- Steps 0-2: Added stop condition — hard bias-to-exit after size-appropriate Survey completes
+- Steps 0-2: Stop condition now reopens ambiguity gate when Recall/Survey surfaces new blockers
+- Step 1b (Recall): Fixed fallback query — changed `s.repository` → `s.cwd` with `{repo_path}` for correct filesystem-based session matching
+- Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
+- Step 5c (Adversarial Review): Added specification review prompt for `.agent.md`/`.skill.md` files — three-way file-type classification (spec / doc / code) with additive mixed-diff handling
+- Step 1b (Recall): Fixed undefined `{target_module}`/`{target_filename}` placeholders → `{filename}` (consistent with other Recall queries)
+- Step 2b (Progress Signal): Fixed malformed tooling placeholder syntax — removed wrapping braces from multi-item status list
+- Step 5c (Adversarial Review): Fixed literal `{placeholders}` in spec/code review prompts that could confuse the template expansion pipeline
+- Step 5c (Adversarial Review): Added `description` parameter to all reviewer task templates for consistent UI labels
+- Step 3a (Plan Review): Added `description` parameter to Frigg task template
+- Step 5c (Adversarial Review): Added `review_context=panel` metadata and `panel_reviewers` list to Mimir prompts — activates Mimir's panel mode lane assignments
+- Step 5c (Adversarial Review): Dynamic reviewer model selection — Heimdall/Thor/Loki models auto-selected by cross-family table based on Odin's model, with fallback rules
+- Step 5b (Verification Cascade): Fixed Tier 2 skip/stale contradiction — Step 1 is always-run, replaced impossible "if skipped" branch with "if context was lost" graceful degradation
+- Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
+- Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
+- Step 5c (Adversarial Review): Fixed prompt render rule — `{staged_diff}` inside `<STAGED_DIFF>` tags IS substituted (phase 2), then the expanded content is protected from double-substitution (phase 3). Previous wording implied the tags blocked all substitution.
+- Standardized `{task_id}` placeholder name — replaced 4 occurrences of `{task-id}` in file paths/headings with `{task_id}` (the slug value still contains dashes, e.g., `fix-login-crash`)
+- Step 5c (Adversarial Review): Added size guard exception — when diff exceeds ~8K lines and reviewers receive only `{list_of_files}`, they ARE instructed to run `git diff` per-file (overrides the general "don't re-run git" rule)
+- Runtime Gate: Clarified why checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always bundles `bash` and `task`
+- Step 5e (Evidence Bundle Gate): Tightened query to exclude `readiness-*` rows — gate now counts only real verification signals (build, test, lint, diagnostics), not 5d readiness checks
+- Step 3a (Plan Review): Standardized Frigg placeholder to `{frigg_model}` everywhere — replaced `{selected_cross_model}` and `{model}` variants
+- Step 5c (Adversarial Review): Merged prompt render step 3 ("no double-substitution") into step 2 — wording said "two phases" but listed three numbered items
+- Step 2b (Progress Signal): Removed braces from `N` placeholders in example — `{N}` conflicted with the `{...}` expansion convention used elsewhere
+- Step 1 (Environment Scan): Clarified "read config files" summary to note presence-only formats (e.g., `*.xcodeproj`) are recorded without reading
+- Step 3a (Plan Review): Reverted Frigg template task size from `{task_size}` placeholder to inline `Small / Medium / Large` pick-one format — clearer as a prompt hint
+- Step 5c (Adversarial Review): Added explicit `phase = 'review'` to size guard `review-partial-coverage` INSERT — prevents bookkeeping row from counting toward 5e verification gate
+- Step 8 (Commit): Added pre-commit review gate — verifies adversarial reviews ran before offering to commit (Medium/Large). Catches the case where Step 5c is skipped entirely, since 5c's own gate only fires on entry.

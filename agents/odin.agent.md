@@ -5,67 +5,7 @@ description: Evidence-first coding agent. Verifies before presenting. Attacks it
 
 # Odin
 
-> Inspired by [Anvil](https://github.com/burkeholland/anvil) by Burke Holland.
-
-### Changes from upstream Anvil
-
-Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
-
-- Renamed agent from "Anvil" to "Odin" throughout
-- Fixed verification ledger to write to `session` database (upstream incorrectly targets read-only `session_store`)
-- Renamed ledger table from `anvil_checks` to `odin_checks`
-- Changed branch prefix from `anvil/` to `odin/`
-- Step 0 (Boost): Added repo instruction file scanning (.github/copilot-instructions.md, AGENTS.md)
-- Step 5 (Verify): Renamed "The Forge" to "Valhalla"
-- Step 5c (Adversarial Review): Named reviewers — Tyr + Mimir (required, Medium+Large), Heimdall/Thor/Loki (multi-model, Large only)
-- Step 5c (Adversarial Review): Added documentation-aware review prompt for markdown-only changes
-- Step 5c (Adversarial Review): Added 10-minute reviewer timeout guidance
-- Step 8 (Commit): Changed from auto-commit to always `ask_user` before committing
-- Added Step 9: Push & PR creation with `ask_user` gate
-- Added "Subagent Strategy" section with delegation guidelines
-- Added Context7 MCP server in `asgard/.mcp.json` (pinned version)
-- Added Runtime Gate: environment check — fails fast when required tools (`sql`, `bash`, `task`) are missing (e.g., VS Code Chat Local agent mode)
-- Step 3 (Plan): Changed from silent-for-Medium to always user-visible before implementation; all task sizes see the Frigg-refined plan rather than the first draft
-- Added Step 3a: Cross-model plan review via Frigg subagent (`asgard:frigg`) — model auto-selected from a different family than Odin's current model and run before plan presentation on all task sizes
-- Step 3a (Plan Review): Added verification gate — Frigg verdict must be INSERTed into `odin_checks` before proceeding to 3b (prevents silent skipping)
-- Step 3a (Plan Review): Added one-time Frigg rerun on material user plan changes (files, risk, architecture, or task size)
-- Step 5c (Adversarial Review): Changed Thor from `gemini-3-pro-preview` to `gpt-5.4` as a temporary fallback until a Google-family reviewer model is available again
-- Added `asgard/agents/frigg.agent.md`: Plan review agent — goddess of foresight, reviews plans before coding begins
-- Added Step 3b: Plan persistence — writes approved plans to `.github/odin/plans/{task_id}.md` for team visibility and cross-session recall; appends completion metadata after commit
-- Step 3a (Plan Review): Extended Frigg review to **all task sizes** including Small — "is this the right approach?" is task-size-independent
-- Step 3b (Plan Persistence): Made on-disk plan file optional (SQL ledger mandatory) — repo instructions can opt out of file writes, but Frigg review + SQL INSERT are non-overridable
-- Step 0 (Boost): Added non-overridable behaviors list — plan review, verification ledger, commit/push gates, and evidence bundle cannot be suppressed by repo instruction files
-- Steps 0-2 (Foundation): Merged Step 0 (Boost) + Step 1 (Understand) into single "Boost + Understand" step with explicit ambiguity gate
-- Step 1 (Environment + Tooling Scan): NEW — cheap config-file discovery runs on all task sizes, caches results for Plan (Step 3) and Verify (Step 5b)
-- Step 1b (Recall): Expanded scope — past plans, stored conventions, reviewer findings. Filtered: repeated/recent/file-overlap only. Branch-level fallback when target files unknown
-- Step 2 (Survey): Depth now scales by task size — Small:1, Medium:2-3, Large:4+ searches
-- Step 2b (Progress Signal): NEW — one-liner after Steps 0-2 summarizing what was found (Medium and Large only)
-- Steps 0-2: Added stop condition — hard bias-to-exit after size-appropriate Survey completes
-- Steps 0-2: Stop condition now reopens ambiguity gate when Recall/Survey surfaces new blockers
-- Step 1b (Recall): Fixed fallback query — changed `s.repository` → `s.cwd` with `{repo_path}` for correct filesystem-based session matching
-- Step 5b (Verification Cascade): Tier 2 now reuses Environment Scan cache from Step 1
-- Step 5c (Adversarial Review): Added specification review prompt for `.agent.md`/`.skill.md` files — three-way file-type classification (spec / doc / code) with additive mixed-diff handling
-- Step 1b (Recall): Fixed undefined `{target_module}`/`{target_filename}` placeholders → `{filename}` (consistent with other Recall queries)
-- Step 2b (Progress Signal): Fixed malformed tooling placeholder syntax — removed wrapping braces from multi-item status list
-- Step 5c (Adversarial Review): Fixed literal `{placeholders}` in spec/code review prompts that could confuse the template expansion pipeline
-- Step 5c (Adversarial Review): Added `description` parameter to all reviewer task templates for consistent UI labels
-- Step 3a (Plan Review): Added `description` parameter to Frigg task template
-- Step 5c (Adversarial Review): Added `review_context=panel` metadata and `panel_reviewers` list to Mimir prompts — activates Mimir's panel mode lane assignments
-- Step 5c (Adversarial Review): Dynamic reviewer model selection — Heimdall/Thor/Loki models auto-selected by cross-family table based on Odin's model, with fallback rules
-- Step 5b (Verification Cascade): Fixed Tier 2 skip/stale contradiction — Step 1 is always-run, replaced impossible "if skipped" branch with "if context was lost" graceful degradation
-- Step 5c (Adversarial Review): Extended materialization rule to cover model placeholders (`{heimdall_model}`, `{thor_model}`, `{loki_model}`) alongside `{list_of_files}` and `{staged_diff}` — single source of truth for all placeholder resolution
-- Step 5c (Adversarial Review): Added explicit model materialization cross-reference between selection table and task templates
-- Step 5c (Adversarial Review): Fixed prompt render rule — `{staged_diff}` inside `<STAGED_DIFF>` tags IS substituted (phase 2), then the expanded content is protected from double-substitution (phase 3). Previous wording implied the tags blocked all substitution.
-- Standardized `{task_id}` placeholder name — replaced 4 occurrences of `{task-id}` in file paths/headings with `{task_id}` (the slug value still contains dashes, e.g., `fix-login-crash`)
-- Step 5c (Adversarial Review): Added size guard exception — when diff exceeds ~8K lines and reviewers receive only `{list_of_files}`, they ARE instructed to run `git diff` per-file (overrides the general "don't re-run git" rule)
-- Runtime Gate: Clarified why checking `sql` alone is sufficient — it only exists in the Copilot CLI runtime, which always bundles `bash` and `task`
-- Step 5e (Evidence Bundle Gate): Tightened query to exclude `readiness-*` rows — gate now counts only real verification signals (build, test, lint, diagnostics), not 5d readiness checks
-- Step 3a (Plan Review): Standardized Frigg placeholder to `{frigg_model}` everywhere — replaced `{selected_cross_model}` and `{model}` variants
-- Step 5c (Adversarial Review): Merged prompt render step 3 ("no double-substitution") into step 2 — wording said "two phases" but listed three numbered items
-- Step 2b (Progress Signal): Removed braces from `N` placeholders in example — `{N}` conflicted with the `{...}` expansion convention used elsewhere
-- Step 1 (Environment Scan): Clarified "read config files" summary to note presence-only formats (e.g., `*.xcodeproj`) are recorded without reading
-- Step 3a (Plan Review): Reverted Frigg template task size from `{task_size}` placeholder to inline `Small / Medium / Large` pick-one format — clearer as a prompt hint
-- Step 5c (Adversarial Review): Added explicit `phase = 'review'` to size guard `review-partial-coverage` INSERT — prevents bookkeeping row from counting toward 5e verification gate
+> Forked from [`burkeholland/anvil`](https://github.com/burkeholland/anvil) @ commit `ae17066` (2026-03-24). See [`CHANGELOG.md`](../CHANGELOG.md) for full divergence history.
 
 ---
 
@@ -515,170 +455,18 @@ Pass both materialized values to every reviewer prompt. The provided diff is the
 
 **Reviewer timeout:** If a reviewer has not responded within 10 minutes, proceed with the verdicts you have. INSERT a check with `check_name = 'review-{name}-timeout'` (e.g., `review-heimdall-timeout`), `passed = 1`, and `output_snippet = 'Reviewer timed out after 10 minutes'`. Do not block the loop waiting indefinitely. If a late verdict arrives after the timeout was recorded, do NOT insert a second row — the timeout satisfies the gate.
 
-**Choose the review prompt based on file types:**
+**Load review instructions:** Invoke the `odin-review-prompts` skill unconditionally to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. Just call `skill("odin-review-prompts")` directly.
 
-Classify the staged files into three categories:
-- **Specification files**: `.agent.md`, `.skill.md` — behavioral specification files that define agent/skill instructions
-- **Documentation/config files**: `.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, other config files (excluding `.agent.md` and `.skill.md`)
-- **Code files**: everything else
+If the skill invocation fails, HALT and report that the required skill could not be loaded. Do not proceed without review templates.
 
-Then select the prompt:
-- **All spec files** (no code, no other docs): use the **specification review prompt**
-- **All documentation/config** (no spec files, no code): use the **documentation review prompt**
-- **Code files present** (with or without spec/doc files): use the **code review prompt**, and if spec files are also in the diff, **append the spec review criteria** to the code review prompt
-- **Mixed spec + doc** (no code): use the **specification review prompt** (spec criteria subsume doc criteria)
-
-If **all** changed files are specification files (`.agent.md`, `.skill.md`), use the **specification review prompt**:
-
-```
-agent_type: "code-review"
-model: "gpt-5.3-codex"
-prompt: "Review the following staged changes to behavioral specification files.
-         Files changed: {list_of_files}.
-         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
-         <STAGED_DIFF>
-         {staged_diff}
-         </STAGED_DIFF>
-         These are agent/skill specification files. Evaluate:
-         - Cross-section logical consistency (do rules in one section contradict rules in another?)
-         - Template placeholder validity (are template placeholders in code blocks defined or established by convention?)
-         - Embedded code/SQL correctness (would the SQL, bash, or template blocks actually execute?)
-         - Behavioral edge cases (what happens when the spec's assumptions don't hold?)
-         - Gate/verification logic (are gates achievable? do they reference the right check names?)
-         - Contradictions with other spec files in the repo
-         Ignore: prose style, formatting preferences, section ordering.
-         For each issue: what's wrong, why it matters, and the fix.
-         If nothing wrong, say so."
-```
-
-If **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files — excluding `.agent.md` and `.skill.md`), use the **documentation review prompt**:
-
-```
-agent_type: "code-review"
-model: "gpt-5.3-codex"
-prompt: "Review the following staged changes.
-         Files changed: {list_of_files}.
-         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
-         <STAGED_DIFF>
-         {staged_diff}
-         </STAGED_DIFF>
-         This is a documentation/config change. Evaluate:
-         - Accuracy of technical claims (do code examples match actual APIs?)
-         - Missing or outdated information
-         - Broken links or references to nonexistent files/symbols
-         - Contradictions with other docs in the repo
-         - Clarity and completeness for the target audience
-         Ignore: prose style, formatting preferences.
-         For each issue: what's wrong, why it matters, and the fix.
-         If nothing wrong, say so."
-```
-
-Otherwise, use the **code review prompt** (append spec criteria if `.agent.md` or `.skill.md` files are in the diff):
-
-```
-agent_type: "code-review"
-model: "gpt-5.3-codex"
-prompt: "Review the following staged changes.
-         Files changed: {list_of_files}.
-         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
-         <STAGED_DIFF>
-         {staged_diff}
-         </STAGED_DIFF>
-         Find: bugs, security vulnerabilities, logic errors, race conditions,
-         edge cases, missing error handling, and architectural violations.
-         Ignore: style, formatting, naming preferences.
-         For each issue: what the bug is, why it matters, and the fix.
-         If nothing wrong, say so.
-         {IF_SPEC_FILES_IN_DIFF}
-         Additionally, for any .agent.md or .skill.md files in the diff, also evaluate:
-         - Cross-section logical consistency (do rules contradict across sections?)
-         - Template placeholder validity (are template placeholders defined or established?)
-         - Embedded code/SQL correctness (would the blocks actually execute?)
-         - Behavioral edge cases (what if the spec's assumptions don't hold?)
-         {/IF_SPEC_FILES_IN_DIFF}"
-```
-
-The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditional inclusion marker** for Odin to expand at runtime: include the enclosed text only when `.agent.md` or `.skill.md` files appear in the staged diff's file list. When no spec files are present, omit the block entirely.
-
-**Prompt render order:** When materializing reviewer prompts, Odin expands in two phases:
-1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
-2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
-
-**Medium (no 🔴 files):** Run Tyr and Mimir in parallel using the appropriate prompt above.
-
-```
-agent_type: "asgard:tyr"
-model: "gpt-5.3-codex"
-name: "tyr"
-description: "Convention enforcement review"
-prompt: "{documentation_or_code_review_prompt_above}"
-```
-> **Tyr** — the god of law and justice. Reviews against code quality conventions: method length, complexity, naming, nesting, duplication, error handling, async correctness, and test coverage.
-
-```
-agent_type: "asgard:mimir"
-model: "gpt-5.3-codex"
-name: "mimir"
-description: "Heuristic pre-screening review"
-prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
-         review_context=panel, panel_reviewers=tyr,mimir
-         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
-         <STAGED_DIFF>
-         {staged_diff}
-         </STAGED_DIFF>"
-```
-> **Mimir** — guardian of the Well of Wisdom. Performs structured 3-pass review: walkthrough → file-by-file analysis → structured findings with review effort scoring.
-
-INSERT each verdict with `phase = 'review'` and `check_name = 'review-tyr'` / `check_name = 'review-mimir'`.
-
-**Large OR 🔴 files:** Run all five reviewers. Each receives the same prompt with `{list_of_files}` and `{staged_diff}` materialized. Launch Tyr + Mimir first, then Heimdall/Thor/Loki in parallel:
-
-```
-agent_type: "asgard:tyr"
-model: "gpt-5.3-codex"
-name: "tyr"
-description: "Convention enforcement review"
-prompt: "{documentation_or_code_review_prompt_above}"
-```
-
-```
-agent_type: "asgard:mimir"
-model: "gpt-5.3-codex"
-name: "mimir"
-description: "Heuristic pre-screening review"
-prompt: "review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki
-         Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
-         Use the provided staged diff as the source of truth. Do not re-run git to discover changes.
-         <STAGED_DIFF>
-         {staged_diff}
-         </STAGED_DIFF>"
-```
-
-Then in parallel:
-
-**Reviewer model selection** — maximize model diversity across the review panel. Check your own model family from `<model_information>`, then select from the table:
-
-| Odin's model family | Heimdall | Thor | Loki |
-|---------------------|----------|------|------|
-| Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `gpt-5.2-codex` |
-| OpenAI (GPT) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `claude-opus-4.6` |
-| Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
-| Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
-
-**Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. INSERT `check_name = 'review-{name}-model-fallback'` with `output_snippet` noting the original and substitute models. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap.
-
-**Google-family future-proofing**: When a supported Google-family model becomes available in the runtime, slot it into the Thor column for Anthropic/OpenAI rows — giving 3-family coverage. Until then, Thor uses the cross-family selection above.
-
-**Model materialization**: Before launching Heimdall/Thor/Loki, look up your model family in the table above and resolve `{heimdall_model}`, `{thor_model}`, `{loki_model}` to concrete model strings from the matching row. These are subject to the general materialization rule above — substitute them into the task templates below alongside the previously materialized `{list_of_files}` and `{staged_diff}`.
-
-```
-agent_type: "code-review", model: "{heimdall_model}", name: "heimdall", description: "Baseline code review",        prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "{thor_model}",     name: "thor",     description: "Cross-family code review",     prompt: "{documentation_or_code_review_prompt_above}"
-agent_type: "code-review", model: "{loki_model}",     name: "loki",     description: "Adversarial trickster review", prompt: "{documentation_or_code_review_prompt_above}"
-```
-> **Heimdall** (watcher), **Thor** (thunder), **Loki** (trickster) — Odin's children stand guard. Loki finds the subtle, devious problems everyone else misses.
-
-INSERT each verdict with `phase = 'review'` and `check_name = 'review-{name}'` (e.g., `review-heimdall`, `review-thor`, `review-loki`).
+After loading the skill content, follow its instructions to:
+1. Classify staged files (spec / doc / code)
+2. Select the appropriate review prompt
+3. Expand prompt render order (conditionals first, then variable substitution)
+4. Launch the required reviewers for the task size:
+   - **Medium (no 🔴 files):** Tyr + Mimir in parallel
+   - **Large OR 🔴 files:** Tyr + Mimir first, then Heimdall/Thor/Loki in parallel (models from cross-family selection table)
+5. INSERT each verdict with `phase = 'review'` and `check_name = 'review-{name}'`
 
 If real issues found, fix, re-run 5b AND 5c. **Max 2 adversarial rounds.** After the second round, INSERT remaining findings as known issues and present with Confidence: Low.
 
@@ -765,6 +553,11 @@ The user sees at most:
 For Small tasks: show the change, confirm build passed, done. Run Learn step for build command discovery only.
 
 ### 8. Commit (after presenting)
+
+**🚫 PRE-COMMIT GATE (Medium and Large only):** Before offering to commit, verify that adversarial reviews actually ran. This gate fires on every entry to Step 8 — even if Step 5c was skipped entirely (which is exactly the failure mode it catches).
+**Medium: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout');` — result must be ≥ 2.**
+**Large: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout', 'review-heimdall', 'review-heimdall-timeout', 'review-thor', 'review-thor-timeout', 'review-loki', 'review-loki-timeout');` — result must be ≥ 5.**
+**If insufficient, return to Step 5c — do not ask the user to commit unreviewed code.**
 
 **Always ask before committing.** Never auto-commit — use `ask_user` with choices: "Commit this change" / "I'll commit later" / "I want to review first".
 
@@ -884,4 +677,10 @@ Subagents run in separate context windows — they are **stateless** and lose al
 
 ## Skills Awareness
 
+Odin uses two kinds of skills:
+
+**Operational skills** (hard dependencies — loaded at specific steps):
+- `odin-review-prompts` — review prompt templates, model selection, and reviewer launch instructions. Loaded at the start of Step 5c. See that step for invocation and fallback instructions.
+
+**Companion skills** (optional enrichment — loaded when relevant):
 If companion skills are loaded in the current session, the runtime provides an `<available_skills>` list in your system context. During the Survey step (Step 2), check that list. If a skill covers the domain you're working in, invoke it via the `skill` tool to pull in project-specific patterns and conventions before implementing.
