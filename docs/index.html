@@ -520,74 +520,6 @@
       padding: 6rem 2rem;
     }
 
-    .pipeline-steps {
-      display: flex;
-      gap: 0;
-      align-items: stretch;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .pipeline-step {
-      flex: 1;
-      min-width: 160px;
-      max-width: 220px;
-      padding: 2rem 1rem;
-      text-align: center;
-      position: relative;
-    }
-
-    /* Arrow connector between steps */
-    .pipeline-step:not(:last-child)::after {
-      content: '›';
-      position: absolute;
-      right: -8px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 2rem;
-      color: var(--gold);
-      opacity: 0.5;
-      font-weight: 300;
-    }
-
-    .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 2px solid var(--gold);
-      color: var(--gold);
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-    }
-
-    .step-title {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      color: var(--text);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 0.5rem;
-    }
-
-    .step-agent {
-      font-size: 0.8rem;
-      color: var(--ice);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-
-    .step-desc {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      line-height: 1.5;
-      font-weight: 300;
-    }
 
     /* ═══════════════════════════════════════════════
        RUNES OF POWER / FEATURES
@@ -1003,25 +935,6 @@
         overflow-x: auto;
       }
 
-      .pipeline-steps {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .pipeline-step {
-        max-width: 100%;
-      }
-
-      .pipeline-step:not(:last-child)::after {
-        content: '↓';
-        position: relative;
-        right: auto;
-        top: auto;
-        transform: none;
-        display: block;
-        margin-top: 0.5rem;
-      }
-
       .terminal {
         max-width: 100%;
       }
@@ -1373,69 +1286,61 @@
           </thead>
           <tbody>
             <tr>
-              <td><span class="phase-label">Baseline</span></td>
+              <th scope="rowgroup" rowspan="3"><span class="phase-label">Baseline</span></th>
               <td>build</td>
-              <td class="pass">✓</td>
-              <td>tsc --noEmit · exit 0</td>
+              <td class="pass" aria-label="Pass">✓</td>
+              <td>compile · exit 0</td>
             </tr>
             <tr>
-              <td></td>
               <td>test</td>
-              <td class="pass">✓</td>
-              <td>vitest run · 247 passed</td>
+              <td class="pass" aria-label="Pass">✓</td>
+              <td>test suite · 247 passed</td>
             </tr>
             <tr>
-              <td></td>
               <td>diagnostics</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>0 errors in target files</td>
             </tr>
             <tr>
-              <td><span class="phase-label">After</span></td>
+              <th scope="rowgroup" rowspan="3"><span class="phase-label">After</span></th>
               <td>build</td>
-              <td class="pass">✓</td>
-              <td>tsc --noEmit · exit 0</td>
+              <td class="pass" aria-label="Pass">✓</td>
+              <td>compile · exit 0</td>
             </tr>
             <tr>
-              <td></td>
               <td>test</td>
-              <td class="pass">✓</td>
-              <td>vitest run · 251 passed (+4 new)</td>
+              <td class="pass" aria-label="Pass">✓</td>
+              <td>test suite · 251 passed (+4 new)</td>
             </tr>
             <tr>
-              <td></td>
               <td>lint</td>
-              <td class="pass">✓</td>
-              <td>eslint · 0 warnings</td>
+              <td class="pass" aria-label="Pass">✓</td>
+              <td>linter · 0 warnings</td>
             </tr>
             <tr>
-              <td><span class="phase-label">Review</span></td>
+              <th scope="rowgroup" rowspan="5"><span class="phase-label">Review</span></th>
               <td>Tyr</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>No issues found</td>
             </tr>
             <tr>
-              <td></td>
               <td>Mimir</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>1 suggestion → fixed before delivery</td>
             </tr>
             <tr>
-              <td></td>
               <td>Heimdall</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>No issues found</td>
             </tr>
             <tr>
-              <td></td>
               <td>Thor</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>No issues found</td>
             </tr>
             <tr>
-              <td></td>
               <td>Loki</td>
-              <td class="pass">✓</td>
+              <td class="pass" aria-label="Pass">✓</td>
               <td>1 edge case → fixed before delivery</td>
             </tr>
           </tbody>
@@ -1557,7 +1462,7 @@
     })();
 
     /* Fade-in on scroll */
-    const fadeEls = document.querySelectorAll('.card, .pipeline-step, .rune-card, .loop-phase');
+    const fadeEls = document.querySelectorAll('.card, .rune-card, .loop-phase');
     const fadeObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
