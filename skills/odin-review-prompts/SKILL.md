@@ -127,7 +127,7 @@ When materializing reviewer prompts, Odin expands in two phases:
 
 ```
 agent_type: "asgard:tyr"
-model: "gpt-5.3-codex"
+model: "{tyr_model}"
 name: "tyr"
 description: "Convention enforcement review"
 prompt: "{selected_review_prompt}"
@@ -140,7 +140,7 @@ INSERT verdict: `phase = 'review'`, `check_name = 'review-tyr'`.
 
 ```
 agent_type: "asgard:mimir"
-model: "gpt-5.3-codex"
+model: "{mimir_model}"
 name: "mimir"
 description: "Heuristic pre-screening review"
 prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {list_of_files}.
@@ -158,6 +158,19 @@ Set `{panel_list}` based on task size:
 > **Mimir** — guardian of the Well of Wisdom. Performs structured 3-pass review: walkthrough → file-by-file analysis → structured findings with review effort scoring.
 
 INSERT verdict: `phase = 'review'`, `check_name = 'review-mimir'`.
+
+### Tyr & Mimir Model Selection
+
+Tyr and Mimir are custom agents with rich behavioral instructions — their diversity comes from agent specs, not model family. Unlike Heimdall/Thor/Loki (generic `code-review` agents where model IS the diversity), Tyr/Mimir use a simple primary/fallback table:
+
+| Reviewer | Primary | Fallback | Rationale |
+|----------|---------|----------|-----------|
+| Tyr | `gpt-5.3-codex` | `gpt-5.4-mini` | Pattern matching (naming, nesting, duplication) — fast models handle this well |
+| Mimir | `claude-sonnet-4.6` | `gpt-5.4` | Multi-pass synthesis (walkthrough → file-by-file → findings) benefits from stronger reasoning; gives Anthropic/OpenAI cross-family diversity on every Medium task |
+
+**Materialization:** Before launching Tyr and Mimir, resolve `{tyr_model}` and `{mimir_model}` to concrete model strings from the Primary column. These are subject to the general materialization rule in Section 3.
+
+**Fallback:** If the primary model is unavailable (task fails with a model error), retry with the Fallback model. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model and the substitute. This row is bookkeeping — not a review verdict.
 
 ---
 
