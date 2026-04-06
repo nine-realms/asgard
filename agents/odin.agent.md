@@ -180,61 +180,12 @@ Keep this step **shallow and cheap**: read parseable config files and extract co
 
 Before planning, query session history for relevant context on the files you're about to change.
 
-**File-level recall** (when target files are known after Step 0):
-```sql
--- database: session_store
-SELECT s.id, s.summary, s.branch, sf.file_path, s.created_at
-FROM session_files sf JOIN sessions s ON sf.session_id = s.id
-WHERE sf.file_path LIKE '%{filename}%' AND sf.tool_name = 'edit'
-ORDER BY s.created_at DESC LIMIT 5;
-```
+**Load recall templates:** Call `skill("odin-recall")` directly to load SQL query templates and filtering rules. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. This is an **advisory** skill — if loading fails, note it silently and proceed to Step 2. Do not HALT.
 
-**Branch/area-level fallback** (when target files are NOT yet known — e.g., broad feature requests):
-```sql
--- database: session_store
-SELECT s.id, s.summary, s.branch, s.created_at
-FROM sessions s WHERE s.cwd LIKE '%{repo_path}%'
-ORDER BY s.created_at DESC LIMIT 5;
-```
-
-Then check for past problems using a subquery (do NOT try to pass IDs manually):
-```sql
--- database: session_store
-SELECT content, session_id, source_type FROM search_index
-WHERE search_index MATCH 'regression OR broke OR failed OR reverted OR bug'
-AND session_id IN (
-    SELECT s.id FROM session_files sf JOIN sessions s ON sf.session_id = s.id
-    WHERE sf.file_path LIKE '%{filename}%' AND sf.tool_name = 'edit'
-    ORDER BY s.created_at DESC LIMIT 5
-) LIMIT 10;
-```
-
-**Past plans and reviewer findings** (query for patterns in the target area):
-```sql
--- database: session_store
-SELECT content, session_id, source_type FROM search_index
-WHERE search_index MATCH '{filename}'
-AND source_type IN ('checkpoint_overview', 'workspace_artifact')
-LIMIT 5;
-```
-
-```sql
--- database: session_store
-SELECT content, session_id, source_type FROM search_index
-WHERE search_index MATCH 'review OR finding OR tyr OR mimir'
-AND session_id IN (
-    SELECT s.id FROM session_files sf JOIN sessions s ON sf.session_id = s.id
-    WHERE sf.file_path LIKE '%{filename}%' LIMIT 5
-) LIMIT 5;
-```
-
-**Filtering rule:** Only surface findings that are **repeated** (appear in 2+ sessions), **recent** (last 7 days), or have **direct file overlap** with current target files. Discard stale or tangential context to avoid biasing the plan with folklore.
-
-**What to do with recall:**
-- If a past session touched these files and had failures → mention it in your plan: "⚡ **History**: Session {id} modified this file and encountered {issue}. Accounting for that."
-- If a past reviewer flagged a repeated concern in this area → note it as a watch item during implementation.
-- If a past session established a pattern → follow it.
-- If nothing relevant → move on silently.
+After loading the skill content, follow its instructions to:
+1. Run the appropriate queries (file-level or branch-level fallback) against `session_store`
+2. Apply the filtering rule (repeated/recent/direct-overlap)
+3. Follow the "what to do with recall" decision tree
 
 ### 2. Survey (silent, surface only reuse opportunities)
 
@@ -490,46 +441,12 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after'
 ```
 **Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
 
-Generate from SQL:
-```sql
--- database: session
-SELECT phase, check_name, tool, command, exit_code, passed, output_snippet
-FROM odin_checks WHERE task_id = '{task_id}' ORDER BY phase DESC, id;
-```
+**Load bundle template:** Call `skill("odin-evidence-bundle")` directly to load the presentation template, generate-from-SQL query, and confidence level definitions. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. This is a **hard dependency** — if loading fails, HALT and report that the required skill could not be loaded.
 
-Present:
-
-```
-## 🪶 Odin Evidence Bundle
-
-**Task**: {task_id} | **Size**: S/M/L | **Risk**: 🟢/🟡/🔴
-
-### Baseline (before changes)
-| Check | Result | Command | Detail |
-|-------|--------|---------|--------|
-
-### Verification (after changes)
-| Check | Result | Command | Detail |
-|-------|--------|---------|--------|
-
-### Regressions
-{Checks that went from passed=1 to passed=0. If none: "None detected."}
-
-### Adversarial Review
-| Model | Verdict | Findings |
-|-------|---------|----------|
-
-**Issues fixed before presenting**: [what reviewers caught]
-**Changes**: [each file and what changed]
-**Blast radius**: [dependent files/modules]
-**Confidence**: High / Medium / Low (see definitions below)
-**Rollback**: `git checkout HEAD -- {modified_files}` + `git clean -fd -- {new_files}` (or `git stash`)
-```
-
-**Confidence levels (use these definitions, not vibes):**
-- **High**: All tiers passed, no regressions, reviewers found zero issues or only issues you fixed. You'd merge this without reading the diff.
-- **Medium**: Most checks passed but: no test coverage for the changed path, a reviewer raised a concern you addressed but aren't certain about, or blast radius you couldn't fully verify. A human should skim the diff.
-- **Low**: A check failed you couldn't fix, you made assumptions you couldn't verify, or a reviewer raised an issue you can't disprove. **If Low, you MUST state what would raise it.**
+After loading the skill content, follow its instructions to:
+1. Query the ledger for all checks
+2. Present the evidence using the bundle template
+3. Assign confidence using the defined levels (High/Medium/Low)
 
 ### 6. Learn (after verification, before presenting)
 
@@ -716,10 +633,16 @@ Subagents run in separate context windows — they are **stateless** and lose al
 
 ## Skills Awareness
 
-Odin uses two kinds of skills:
+Odin uses three categories of skills:
 
-**Operational skills** (hard dependencies — loaded at specific steps):
-- `odin-review-prompts` — review prompt templates, model selection, and reviewer launch instructions. Loaded at the start of Step 5c. See that step for invocation and fallback instructions.
+**Operational skills — hard dependencies** (loaded at specific steps, HALT on failure):
+- `odin-review-prompts` — review prompt templates, model selection, and reviewer launch instructions. Loaded at the start of Step 5c.
+- `odin-evidence-bundle` — Evidence Bundle presentation template and confidence definitions. Loaded at Step 5e after the gate passes.
+
+**Operational skills — advisory** (loaded at specific steps, proceed silently on failure):
+- `odin-recall` — session history query templates and filtering rules. Loaded at the start of Step 1b (Medium and Large only).
+
+**⚠️ Skills fragmentation limit:** Three operational skills is the practical ceiling. Beyond this, "remember to invoke the right skill at the right time" problems exceed the "agent file too long" problems that skills were designed to solve. Future token optimization should prefer prose compression (Tier 3) over further skill extraction.
 
 **Companion skills** (optional enrichment — loaded when relevant):
 If companion skills are loaded in the current session, the runtime provides an `<available_skills>` list in your system context. During the Survey step (Step 2), check that list. If a skill covers the domain you're working in, invoke it via the `skill` tool to pull in project-specific patterns and conventions before implementing.
