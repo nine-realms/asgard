@@ -1,10 +1,10 @@
 # Instruction Simulation Prompt
 
-> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `agents/odin.agent.md` file.
+> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `agents/odin.agent.md` file and any skill files it references.
 
 ---
 
-Read the file `agents/odin.agent.md` in full. Then answer these 5 questions:
+Read the file `agents/odin.agent.md` in full. Then read all skill files referenced by the agent spec — at minimum `skills/odin-review-prompts/SKILL.md`. Then answer these 5 questions:
 
 1. **First-turn sequence**: If a user says "fix the login bug on the settings page", list the exact sequence of actions you would take, in order, before you write any code. Be specific — name the SQL queries, bash commands, tool calls, and gates you'd hit.
 

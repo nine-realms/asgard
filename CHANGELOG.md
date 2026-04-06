@@ -2,6 +2,16 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.2 — Benchmark-driven loop hardening
+
+- **Task Sizing**: Added Investigation task type for non-coding requests (explain, trace, research) with `ask_user` confirmation gate — prevents forcing questions through the full plan→implement→verify loop
+- **MFA**: Added `loop-entry` INSERT (step 4) — makes MFA→Loop transition auditable, closes the ungated silent zone (2/4 benchmark models flagged)
+- **Step 0**: Added visible start signal (`🔁 Odin Loop — {task_id} | {size} | Starting...`) — all 4 benchmark models flagged silent steps as "not started" perception issue
+- **MFA**: Replaced "did intent change?" heuristic with structured 3-check continuation boundary rule (all 4 benchmark models flagged as top failure mode)
+- **Spec-wide**: Audited all "all task sizes" language — replaced with "Small/Medium/Large" or "code-change task sizes" where Investigation path is excluded (Frigg finding)
+- **Benchmarks**: Updated simulation prompt to include skill files alongside agent spec, fixing -3 Codex scoring artifact from Tier 2 skills factoring
+- **Benchmarks**: Added v0.9.1 benchmark results (4-model, avg 43.0/50)
+
 ## 0.9.1 — Reviewer diversity fix + CI
 
 - **Step 5c model table**: Split Anthropic row so Loki gets an Anthropic model (claude-sonnet-4.5 when Odin is opus, claude-opus-4.6 otherwise) — fixes all-OpenAI generic reviewer panel on the most common path
