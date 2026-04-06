@@ -20,12 +20,14 @@ Did the model identify the correct pre-code action sequence?
 
 Did the model find and correctly describe all gates?
 
+**Counting rule:** Score against every explicit `🚫 GATE` checkpoint in `odin.agent.md`. If a gate header contains separate Medium/Large `🚫` variants (e.g., Step 5c and Step 8 each have distinct Medium and Large queries), count each variant as its own scored gate. Prose-described gates that lack a `🚫` marker (e.g., the Runtime Gate) are not scored but may earn credit under "notes which checks are SQL vs prose-only."
+
 | Score | Criteria |
 |-------|----------|
-| 9-10 | All 8 gates found, notes which have explicit SQL vs prose-only checks |
-| 7-8 | Most gates found, queries mostly correct, missed 1-2 gates or had minor query errors. |
-| 5-6 | Found the major gates (Frigg, 5c, 8) but missed plan file or baseline gates. |
-| 3-4 | Only found 2-3 gates. |
+| 9-10 | All scored gates found, and the response notes which gates use explicit SQL checks vs bash/prose-only checks. |
+| 7-8 | Most scored gates found; queries mostly correct; missed only 1-2 scored gates or had minor query errors. |
+| 5-6 | Found the major gates (e.g., Frigg, 5c, 8) but missed several scored gates such as plan-file, baseline, or size-variant checkpoints. |
+| 3-4 | Only found a small minority of the scored gates, or collapsed multiple distinct `🚫` checkpoints into a few vague gate descriptions. |
 | 1-2 | Gates not identified or fundamentally misunderstood. |
 
 ### 3. Failure Mode Quality (1-10)

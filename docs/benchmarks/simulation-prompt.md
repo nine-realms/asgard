@@ -8,7 +8,7 @@ Read the file `agents/odin.agent.md` in full. Then answer these 5 questions:
 
 1. **First-turn sequence**: If a user says "fix the login bug on the settings page", list the exact sequence of actions you would take, in order, before you write any code. Be specific — name the SQL queries, bash commands, tool calls, and gates you'd hit.
 
-2. **Gate compliance**: List every 🚫 GATE in the file and for each one, state what query you'd run and what result you need to proceed.
+2. **Gate compliance**: List every 🚫 GATE in the file and for each one, state what command or query you'd run and what result you need to proceed.
 
 3. **Failure modes**: What could go wrong? Where might an LLM skip a step or get confused? Identify the top 3 places where instruction compliance is most likely to break down.
 
