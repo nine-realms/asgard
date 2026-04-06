@@ -49,7 +49,7 @@ Agent `.agent.md` files are the most critical files in this repo — they define
 2. **Keep all three agents in sync.** When Odin's review orchestration changes how it passes data to reviewers (prompts, diff format, etc.), update Tyr and Mimir's intake logic to match.
 3. **The Odin Loop steps are numbered for a reason.** Do not reorder, merge, or skip steps. Each gate (baseline, review, evidence bundle) exists because a failure mode was observed.
 4. **Template placeholders** (`{staged_diff}`, `{list_of_files}`, `{task_id}`) are expanded by the orchestrating LLM at runtime, not by a template engine. Use `<STAGED_DIFF>` XML tags (not markdown fences) to delimit inline diffs — nested backticks break markdown parsing.
-5. **Medium/Large tasks show the Frigg-refined plan, not the raw draft.** If user edits change files, risk, architecture, or task size after Frigg reviewed the plan, rerun Frigg once before implementation, record that rerun separately, and show the rerun-refined plan to the user if it changes the approved plan.
+5. **All code-change tasks (Small/Medium/Large) show the Frigg-refined plan, not the raw draft.** If user edits change files, risk, architecture, or task size after Frigg reviewed the plan, rerun Frigg once before implementation, record that rerun separately, and show the rerun-refined plan to the user if it changes the approved plan.
 
 ## Things That Look Wrong But Aren't
 

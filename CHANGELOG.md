@@ -2,6 +2,48 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.7 — Address PR #13 review feedback
+
+- **MFA forward reference**: Step 1 Runtime Gate failure path now explicitly notes it is the one allowed forward reference before MFA completes — eliminates instruction conflict with "do not read further" preamble
+- **Loop-entry gate**: Now handles SQL errors (e.g. missing `odin_checks` table) the same as result=0 — both send back to MFA step 1 for full restart
+
+## 0.9.6 — Widen Step 0 gate recovery
+
+- **Gate recovery**: Step 0 loop-entry gate failure now sends back to MFA step 1 (full restart) instead of step 4 (INSERT only). If MFA was skipped entirely, patching just the INSERT leaves the table and task_id missing. Found by Opus in v0.9.5 benchmarks (reinforced across 2 runs).
+
+## 0.9.5 — Benchmark-driven signal and safety fixes
+
+- **Start signal**: Moved from after pushback gate to immediately after task sizing — users now see `🔁 Odin Loop` before any ambiguity/pushback questions pause the flow (4/4 benchmark convergence)
+- **Continuation check**: Added uncertainty-default clause — when unsure whether a message is a new task, default to new task (re-run MFA). Skipping MFA is the dangerous direction.
+- **Size escalation**: Added explicit re-run instruction when plan drafting triggers a size increase (e.g., Small → Large via 🔴 files) — recompute all size-derived obligations (Recall depth, Survey depth, reviewer count) at the escalated size
+- **Investigation shortcut**: Simplified — start signal is now already shown before the shortcut fires, removed redundant "show the start signal" directive
+- **Benchmarks**: Added v0.9.4 benchmark results (4-model, avg 44.5/50, +0.2 from v0.9.3)
+
+## 0.9.4 — Close MFA→Step 0 gap
+
+- **Structure**: Moved Runtime Gate, Task Sizing, and Verification Ledger sections to end-of-file reference area — closes the 110-line gap between MFA and Step 0 that 2/4 benchmark models identified as the top remaining navigational hazard
+- **Reading path**: MFA now flows directly into The Odin Loop → Step 0 with no intervening reference material
+- **Cross-references**: Updated all positional words ("above"/"below") to position-independent section-name references
+- **Benchmarks**: Added v0.9.3 benchmark results (4-model, avg 44.3/50, +0.3 from v0.9.2)
+
+## 0.9.3 — MFA hardening + benchmark-driven clarity fixes
+
+- **MFA**: Merged ⚠️ CRITICAL callout into MFA section as single atomic block — eliminates "satisfied after sql check" off-ramp (2/4 benchmark models flagged)
+- **Step 0**: Moved loop-entry gate inside Step 0 as first action — prevents header-navigating models from skipping the interstitial gate (2/4 benchmark models flagged)
+- **Step 5c**: Added explicit 4-step placeholder materialization checklist with verify-and-halt — prevents malformed reviewer prompts (3/4 benchmark models flagged)
+- **Task Sizing**: Added step routing table (Investigation/Small/Medium/Large) — eliminates scattered size conditionals, gives models single reference point (2/4 benchmark models flagged)
+- **Benchmarks**: Added v0.9.2 benchmark results (4-model, avg 44.0/50, +1.0 from v0.9.1)
+
+## 0.9.2 — Benchmark-driven loop hardening
+
+- **Task Sizing**: Added Investigation task type for non-coding requests (explain, trace, research) with `ask_user` confirmation gate — prevents forcing questions through the full plan→implement→verify loop
+- **MFA**: Added `loop-entry` INSERT (step 4) — makes MFA→Loop transition auditable, closes the ungated silent zone (2/4 benchmark models flagged)
+- **Step 0**: Added visible start signal (`🔁 Odin Loop — {task_id} | {size} | Starting...`) — all 4 benchmark models flagged silent steps as "not started" perception issue
+- **MFA**: Replaced "did intent change?" heuristic with structured 3-check continuation boundary rule (all 4 benchmark models flagged as top failure mode)
+- **Spec-wide**: Audited all "all task sizes" language — replaced with "Small/Medium/Large" or "code-change task sizes" where Investigation path is excluded (Frigg finding)
+- **Benchmarks**: Updated simulation prompt to include skill files alongside agent spec, fixing -3 Codex scoring artifact from Tier 2 skills factoring
+- **Benchmarks**: Added v0.9.1 benchmark results (4-model, avg 43.0/50)
+
 ## 0.9.1 — Reviewer diversity fix + CI
 
 - **Step 5c model table**: Split Anthropic row so Loki gets an Anthropic model (claude-sonnet-4.5 when Odin is opus, claude-opus-4.6 otherwise) — fixes all-OpenAI generic reviewer panel on the most common path
