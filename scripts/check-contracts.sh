@@ -30,13 +30,20 @@ done
 # Skills referenced in odin.agent.md must have SKILL.md files.
 echo "▸ Skill file existence"
 
-for skill in odin-review-prompts odin-evidence-bundle odin-recall; do
-  if [ -s "$REPO_ROOT/skills/$skill/SKILL.md" ]; then
-    pass "skills/$skill/SKILL.md exists"
-  else
-    fail "skills/$skill/SKILL.md missing or empty"
-  fi
-done
+# Dynamically extract skill names from skill("...") invocations in the agent file.
+SKILL_NAMES=$(grep -Eo 'skill\("([^"]+)"\)' "$AGENT" | sed 's/skill("//;s/")//' | sort -u || true)
+
+if [ -z "$SKILL_NAMES" ]; then
+  fail "No skill(\"...\") invocations found in agent file"
+else
+  while IFS= read -r skill; do
+    if [ -s "$REPO_ROOT/skills/$skill/SKILL.md" ]; then
+      pass "skills/$skill/SKILL.md exists"
+    else
+      fail "skills/$skill/SKILL.md missing or empty"
+    fi
+  done <<< "$SKILL_NAMES"
+fi
 
 # ── 3. Panel mode contract ──────────────────────────────────────────────
 # review_context=panel must appear in both the skill and mimir.agent.md.
@@ -60,7 +67,7 @@ fi
 # The version in plugin.json must appear somewhere in CHANGELOG.md.
 echo "▸ Plugin version ↔ CHANGELOG"
 
-PLUGIN_VERSION=$(grep -o '"version": *"[^"]*"' "$REPO_ROOT/plugin.json" | grep -o '[0-9][0-9.]*')
+PLUGIN_VERSION=$(grep -o '"version": *"[^"]*"' "$REPO_ROOT/plugin.json" | grep -o '[0-9][0-9.]*' || true)
 if [ -z "$PLUGIN_VERSION" ]; then
   fail "Could not parse version from plugin.json"
 elif grep -q "$PLUGIN_VERSION" "$REPO_ROOT/CHANGELOG.md" 2>/dev/null; then
@@ -75,7 +82,7 @@ echo "▸ H/T/L model uniqueness per row"
 
 # Extract table rows (lines starting with |, excluding header/separator)
 TABLE_ROWS=$(sed -n '/^|.*Heimdall.*Thor.*Loki/,/^$/p' "$SKILL" \
-  | grep '^|' | grep -v 'Odin' | grep -v '^\s*|--') || true
+  | grep '^|' | grep -v 'Odin' | grep -v '^\s*|--' || true)
 
 if [ -z "$TABLE_ROWS" ]; then
   fail "Could not find H/T/L model selection table in skill"
