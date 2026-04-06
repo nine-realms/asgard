@@ -18,7 +18,16 @@ Query the ledger to populate the bundle:
 ```sql
 -- database: session
 SELECT phase, check_name, tool, command, exit_code, passed, output_snippet
-FROM odin_checks WHERE task_id = '{task_id}' ORDER BY phase DESC, id;
+FROM odin_checks
+WHERE task_id = '{task_id}'
+ORDER BY
+  CASE
+    WHEN phase = 'baseline' THEN 1
+    WHEN phase = 'after' THEN 2
+    WHEN phase = 'review' THEN 3
+    ELSE 4
+  END,
+  id;
 ```
 
 ---

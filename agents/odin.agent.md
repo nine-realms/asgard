@@ -180,7 +180,7 @@ Keep this step **shallow and cheap**: read parseable config files and extract co
 
 Before planning, query session history for relevant context on the files you're about to change.
 
-**Load recall templates:** Invoke the `odin-recall` skill to load SQL query templates and filtering rules. This is an **advisory** skill — if loading fails, note it silently and proceed to Step 2. Do not HALT.
+**Load recall templates:** Call `skill("odin-recall")` directly to load SQL query templates and filtering rules. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. This is an **advisory** skill — if loading fails, note it silently and proceed to Step 2. Do not HALT.
 
 After loading the skill content, follow its instructions to:
 1. Run the appropriate queries (file-level or branch-level fallback) against `session_store`
@@ -441,7 +441,7 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after'
 ```
 **Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
 
-**Load bundle template:** Invoke the `odin-evidence-bundle` skill to load the presentation template, generate-from-SQL query, and confidence level definitions. This is a **hard dependency** — if loading fails, HALT and report that the required skill could not be loaded.
+**Load bundle template:** Call `skill("odin-evidence-bundle")` directly to load the presentation template, generate-from-SQL query, and confidence level definitions. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. This is a **hard dependency** — if loading fails, HALT and report that the required skill could not be loaded.
 
 After loading the skill content, follow its instructions to:
 1. Query the ledger for all checks
