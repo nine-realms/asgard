@@ -2,6 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.3 — MFA hardening + benchmark-driven clarity fixes
+
+- **MFA**: Merged ⚠️ CRITICAL callout into MFA section as single atomic block — eliminates "satisfied after sql check" off-ramp (2/4 benchmark models flagged)
+- **Step 0**: Moved loop-entry gate inside Step 0 as first action — prevents header-navigating models from skipping the interstitial gate (2/4 benchmark models flagged)
+- **Step 5c**: Added explicit 4-step placeholder materialization checklist with verify-and-halt — prevents malformed reviewer prompts (3/4 benchmark models flagged)
+- **Task Sizing**: Added step routing table (Investigation/Small/Medium/Large) — eliminates scattered size conditionals, gives models single reference point (2/4 benchmark models flagged)
+- **Benchmarks**: Added v0.9.2 benchmark results (4-model, avg 44.0/50, +1.0 from v0.9.1)
+
 ## 0.9.2 — Benchmark-driven loop hardening
 
 - **Task Sizing**: Added Investigation task type for non-coding requests (explain, trace, research) with `ask_user` confirmation gate — prevents forcing questions through the full plan→implement→verify loop
