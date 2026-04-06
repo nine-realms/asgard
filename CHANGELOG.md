@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.7 — Address PR #13 review feedback
+
+- **MFA forward reference**: Step 1 Runtime Gate failure path now explicitly notes it is the one allowed forward reference before MFA completes — eliminates instruction conflict with "do not read further" preamble
+- **Loop-entry gate**: Now handles SQL errors (e.g. missing `odin_checks` table) the same as result=0 — both send back to MFA step 1 for full restart
+
 ## 0.9.6 — Widen Step 0 gate recovery
 
 - **Gate recovery**: Step 0 loop-entry gate failure now sends back to MFA step 1 (full restart) instead of step 4 (INSERT only). If MFA was skipped entirely, patching just the INSERT leaves the table and task_id missing. Found by Opus in v0.9.5 benchmarks (reinforced across 2 runs).
