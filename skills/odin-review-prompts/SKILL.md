@@ -180,14 +180,17 @@ Tyr and Mimir are custom agents with rich behavioral instructions — their dive
 
 ### Reviewer Model Selection
 
-Maximize model diversity across the review panel. Check Odin's own model family from `<model_information>`, then select from the table:
+Maximize model diversity across the review panel. Check Odin's **exact model** from `<model_information>`, then select from the table. The Anthropic rows use the exact model ID (not just family) so Loki avoids self-review while still adding an Anthropic perspective to the generic lane:
 
-| Odin's model family | Heimdall | Thor | Loki |
-|---------------------|----------|------|------|
-| Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `gpt-5.2-codex` |
+| Odin's model | Heimdall | Thor | Loki |
+|--------------|----------|------|------|
+| `claude-opus-4.6` | `gpt-5.3-codex` | `gpt-5.4` | `claude-sonnet-4.5` |
+| Other Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
 | OpenAI (GPT) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `claude-opus-4.6` |
 | Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
 | Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
+
+**Why Anthropic gets two rows:** When Odin is `claude-opus-4.6`, Loki can't use the same model (self-review) or `claude-sonnet-4.6` (Mimir overlap). `claude-sonnet-4.5` gives a prior-generation Anthropic perspective. When Odin is any other Anthropic model, Loki uses `claude-opus-4.6` — the strongest available, different from both Odin and Mimir.
 
 **Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model, the substitute model, and any forced overlap. This row is bookkeeping — not a review verdict. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap in `output_snippet`.
 
@@ -195,7 +198,7 @@ Maximize model diversity across the review panel. Check Odin's own model family 
 
 ### Model Materialization
 
-Before launching Heimdall/Thor/Loki, look up Odin's model family in the table above and resolve `{heimdall_model}`, `{thor_model}`, `{loki_model}` to concrete model strings from the matching row. These are subject to the general materialization rule — substitute them into the task templates below alongside the previously materialized `{list_of_files}` and `{staged_diff}`.
+Before launching Heimdall/Thor/Loki, look up Odin's model in the table above: first try an exact match on Odin's model ID; if no exact row exists, match by model family (Anthropic/OpenAI/Google); if neither matches, use the "Unknown / other" row. Resolve `{heimdall_model}`, `{thor_model}`, `{loki_model}` to concrete model strings from the matching row. These are subject to the general materialization rule — substitute them into the task templates below alongside the previously materialized `{list_of_files}` and `{staged_diff}`.
 
 ### Launch Templates
 

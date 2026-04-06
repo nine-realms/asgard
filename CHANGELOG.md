@@ -2,7 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
-- Renamed agent from "Anvil" to "Odin" throughout
+## 0.9.1 — Reviewer diversity fix + CI
+
+- **Step 5c model table**: Split Anthropic row so Loki gets an Anthropic model (claude-sonnet-4.5 when Odin is opus, claude-opus-4.6 otherwise) — fixes all-OpenAI generic reviewer panel on the most common path
+- **copilot-instructions.md**: Replaced static H/T/L model table with dynamic reference to skill; models are selected at runtime
+- **CI**: Added `scripts/check-contracts.sh`, `Makefile` (`make check`), and GitHub Actions workflow for contract validation on PRs to main
+- **Contract checks**: check-name alignment (skill ↔ agent gates), skill file existence, panel mode contract, version ↔ changelog alignment, H/T/L model uniqueness per row
+
+## 0.9.0 — Skills extraction
 - Fixed verification ledger to write to `session` database (upstream incorrectly targets read-only `session_store`)
 - Renamed ledger table from `anvil_checks` to `odin_checks`
 - Changed branch prefix from `anvil/` to `odin/`
