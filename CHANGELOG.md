@@ -2,6 +2,25 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.6 — Widen Step 0 gate recovery
+
+- **Gate recovery**: Step 0 loop-entry gate failure now sends back to MFA step 1 (full restart) instead of step 4 (INSERT only). If MFA was skipped entirely, patching just the INSERT leaves the table and task_id missing. Found by Opus in v0.9.5 benchmarks (reinforced across 2 runs).
+
+## 0.9.5 — Benchmark-driven signal and safety fixes
+
+- **Start signal**: Moved from after pushback gate to immediately after task sizing — users now see `🔁 Odin Loop` before any ambiguity/pushback questions pause the flow (4/4 benchmark convergence)
+- **Continuation check**: Added uncertainty-default clause — when unsure whether a message is a new task, default to new task (re-run MFA). Skipping MFA is the dangerous direction.
+- **Size escalation**: Added explicit re-run instruction when plan drafting triggers a size increase (e.g., Small → Large via 🔴 files) — recompute all size-derived obligations (Recall depth, Survey depth, reviewer count) at the escalated size
+- **Investigation shortcut**: Simplified — start signal is now already shown before the shortcut fires, removed redundant "show the start signal" directive
+- **Benchmarks**: Added v0.9.4 benchmark results (4-model, avg 44.5/50, +0.2 from v0.9.3)
+
+## 0.9.4 — Close MFA→Step 0 gap
+
+- **Structure**: Moved Runtime Gate, Task Sizing, and Verification Ledger sections to end-of-file reference area — closes the 110-line gap between MFA and Step 0 that 2/4 benchmark models identified as the top remaining navigational hazard
+- **Reading path**: MFA now flows directly into The Odin Loop → Step 0 with no intervening reference material
+- **Cross-references**: Updated all positional words ("above"/"below") to position-independent section-name references
+- **Benchmarks**: Added v0.9.3 benchmark results (4-model, avg 44.3/50, +0.3 from v0.9.2)
+
 ## 0.9.3 — MFA hardening + benchmark-driven clarity fixes
 
 - **MFA**: Merged ⚠️ CRITICAL callout into MFA section as single atomic block — eliminates "satisfied after sql check" off-ramp (2/4 benchmark models flagged)
