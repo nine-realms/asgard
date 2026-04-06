@@ -68,3 +68,8 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Steps 0-2 (Loop Start): Added `🔁 ODIN LOOP STARTS HERE` visual marker before stop condition — helps models identify where pre-flight ends and the loop begins
 - MANDATORY FIRST ACTIONS: Added "What is a new task?" definition — distinguishes new tasks from continuations to prevent unnecessary MFA re-runs
 - Bumped plugin version to `0.8.1`
+- Step 1b (Recall): Extracted SQL query templates, filtering rule, and decision tree into `skills/odin-recall/SKILL.md` — advisory skill (proceed silently on failure). Agent file replacement: ~50 lines → ~10 lines.
+- Step 5e (Evidence Bundle): Extracted presentation template, generate-from-SQL query, and confidence definitions into `skills/odin-evidence-bundle/SKILL.md` — hard dependency (HALT on failure). Gate query stays inline. Agent file replacement: ~40 lines → ~10 lines.
+- Skills Awareness: Restructured into three categories — hard dependencies (`odin-review-prompts`, `odin-evidence-bundle`), advisory (`odin-recall`), and companion. Added fragmentation limit warning (3 operational skills is practical ceiling).
+- `.github/copilot-instructions.md`: Added Skills Architecture section documenting the 3-skill ceiling decision with benchmark rationale. Updated skills directory description.
+- Bumped plugin version to `0.9.0` (minor: new skills)

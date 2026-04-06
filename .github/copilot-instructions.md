@@ -9,7 +9,7 @@ The goal of this repo is to build the **best possible AI coding agent** through 
 ## Repo Structure
 
 - `agents/` — Agent instruction files (.agent.md)
-- `skills/` — Agent-specific skills (future: Mimir CCA heuristics)
+- `skills/` — Agent-specific skills (odin-review-prompts, odin-recall, odin-evidence-bundle)
 - `extensions/` — Copilot CLI extensions (mimir-feedback)
 - `.mcp.json` — MCP server configuration (Context7)
 - `plugin.json` — Plugin manifest
@@ -73,6 +73,20 @@ The plugin version lives in `plugin.json` — this is the **sole version source*
 When in doubt, bump patch. Forgetting to bump means users running `copilot plugin install` won't pick up the change.
 
 **Always update `CHANGELOG.md`** when committing changes to agent files, skill files, or plugin configuration. Each entry should briefly describe what changed and why. The changelog is the human-readable release history — if it's not in the changelog, it didn't happen.
+
+## Skills Architecture
+
+Odin's operational skills (`skills/*/SKILL.md`) extract step-specific content from the agent file into on-demand modules. This reduces per-turn token cost — content loads only when the relevant step executes.
+
+**Current operational skills:**
+
+| Skill | Step | Type | Purpose |
+|-------|------|------|---------|
+| `odin-review-prompts` | 5c | Hard dependency | Review prompt templates, model selection, reviewer launch |
+| `odin-evidence-bundle` | 5e | Hard dependency | Evidence Bundle template, confidence definitions |
+| `odin-recall` | 1b | Advisory | Session history query templates, filtering rules |
+
+**⚠️ Fragmentation limit: 3 operational skills is the practical ceiling.** Beyond this, the cost of remembering to invoke the right skill at the right step exceeds the token savings from a shorter agent file. Cross-model benchmarks (v0.8.0 baseline, avg 43.5/50) showed that file length hurts compliance, but adding more invocation points creates its own compliance risk. Future token optimization should prefer **prose compression** (making existing sections more concise) over **further skill extraction** (creating more files to load).
 
 ## Testing Changes
 
