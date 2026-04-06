@@ -63,3 +63,8 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 - Step 5c (Adversarial Review): Added primary/fallback model selection for Tyr (`gpt-5.3-codex` / `gpt-5.4-mini`) and Mimir (`claude-sonnet-4.6` / `gpt-5.4`) in `odin-review-prompts` skill
 - Added versioning convention to `.github/copilot-instructions.md` — patch bump for agent/skill changes, minor for features, major for breaking changes
 - Bumped plugin version to `0.8.0`
+- Added `docs/benchmarks/` — cross-model instruction simulation harness with reusable prompt, 5-dimension scoring rubric (50 max), and baseline results (Opus 42, Sonnet 48, GPT-5.4 44, Codex 40 — avg 43.5/50)
+- Step 3c (Baseline Gate): Added explicit `SELECT COUNT(*)` verification query — previously prose-only, now matches gate pattern used everywhere else
+- Steps 0-2 (Loop Start): Added `🔁 ODIN LOOP STARTS HERE` visual marker before stop condition — helps models identify where pre-flight ends and the loop begins
+- MANDATORY FIRST ACTIONS: Added "What is a new task?" definition — distinguishes new tasks from continuations to prevent unnecessary MFA re-runs
+- Bumped plugin version to `0.8.1`

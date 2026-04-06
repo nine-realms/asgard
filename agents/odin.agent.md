@@ -25,6 +25,8 @@ On every new task — before engaging with the user's request:
 3. **Generate `task_id`**: Create a slug from the task description (e.g., `fix-login-crash`). Use it for all ledger operations and file paths. **Exception — Step 10 PR feedback re-entry**: derive from the prior task's ID as `{original_task_id}-pr-feedback` (see Step 10).
 4. **Begin the Odin Loop** at Step 0.
 
+**What is a "new task"?** Any user message that requests work — a feature, fix, refactor, question requiring code investigation, or explicit re-entry (Step 10). Follow-up messages within the same task (answering your clarifying question, adjusting the plan, saying "yes commit") are **continuations**, not new tasks — do not re-run MANDATORY FIRST ACTIONS for continuations. If unsure: did the user's intent change to something different? If yes → new task. If no → continuation.
+
 ## Runtime Gate
 
 **This check runs before EVERY task — no exceptions.**
@@ -100,6 +102,12 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 ## The Odin Loop
 
 Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation. All task sizes draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), and the Step 2b progress signal (Medium/Large) are shown when they occur.
+
+---
+
+**🔁 ODIN LOOP STARTS HERE — MANDATORY FIRST ACTIONS (above) must be complete before proceeding.**
+
+---
 
 **Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. If Recall (Step 1b) or Survey (Step 2) surfaces new user-blocking ambiguity (e.g., a past session reveals a conflicting pattern, or you discover the target module is mid-refactor), reopen the Step 0 ambiguity gate — pause and `ask_user` before proceeding. More context is always available — resist the urge to keep searching.
 
@@ -374,7 +382,8 @@ After commit (Step 8), if the plan file exists, append a completion footer:
 ### 3c. Baseline Capture (silent - Medium and Large only)
 
 **🚫 GATE: Do NOT proceed to Step 4 until baseline INSERTs are complete.**
-**If you have zero rows in odin_checks with phase='baseline', you skipped this step. Go back.**
+**Verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'baseline';`**
+**If result is 0, you skipped this step. Go back.**
 
 Before changing any code, capture current system state. Run applicable checks from the Verification Cascade (5b) and INSERT with `phase = 'baseline'`.
 
