@@ -29,13 +29,15 @@ Agents live in `agents/<name>.agent.md`. They follow the GitHub Copilot custom a
 
 ### Adversarial Reviewers Without Agent Files (by design)
 
-Odin's adversarial review step also uses **Heimdall**, **Thor**, and **Loki**. These are **intentionally not custom agents** — they use the generic `code-review` agent type with different models:
+Odin's adversarial review step also uses **Heimdall**, **Thor**, and **Loki**. These are **intentionally not custom agents** — they use the generic `code-review` agent type with dynamically selected models:
 
-| Reviewer | Agent Type | Model | Purpose |
-|----------|-----------|-------|---------|
-| Heimdall | `code-review` | `gpt-5.3-codex` | Baseline code review from a different model family |
-| Thor | `code-review` | `gpt-5.4` | Additional review lane |
-| Loki | `code-review` | `claude-opus-4.6` | Cross-model diversity — finds subtle, devious problems |
+| Reviewer | Agent Type | Purpose |
+|----------|-----------|---------|
+| Heimdall | `code-review` | Baseline cross-model review |
+| Thor | `code-review` | Additional review lane |
+| Loki | `code-review` | Adversarial trickster — finds subtle, devious problems |
+
+Models are selected at runtime for cross-family diversity based on Odin's own model. See the selection table in `skills/odin-review-prompts/SKILL.md` (Section 5, "Reviewer Model Selection") for the full matrix.
 
 **Do not create `.agent.md` files for Heimdall, Thor, or Loki.** Their value comes from being unbiased — they receive only the review prompt and the diff, with no agent personality or conventions baked in.
 
@@ -91,6 +93,9 @@ Odin's operational skills (`skills/*/SKILL.md`) extract step-specific content fr
 ## Testing Changes
 
 After modifying agents:
-1. Reinstall the plugin: `copilot plugin install ./` (from the repo root)
-2. Inside Copilot CLI, verify with `/agent` and select the modified agent
-3. Run a real task through the modified agent and verify the full loop completes
+1. Run contract checks: `make check` (validates cross-file contracts — check names, model tables, skill existence)
+2. Reinstall the plugin: `copilot plugin install ./` (from the repo root)
+3. Inside Copilot CLI, verify with `/agent` and select the modified agent
+4. Run a real task through the modified agent and verify the full loop completes
+
+CI runs `make check` automatically on PRs to `main`.
