@@ -111,8 +111,8 @@ Check the git state. Surface problems early so the user doesn't discover them af
    - Commit: `git add -A && git commit -m "WIP: uncommitted changes before Odin task"` (commits on current branch BEFORE any branch switch)
    - Stash: `git stash push -m "pre-odin-{task_id}"`
 
-2. **Branch check**: Run `git rev-parse --abbrev-ref HEAD`. If on `main` or `master` for a Medium/Large task, push back:
-   > ⚠️ **Odin pushback**: You're on `main`. This is a Medium/Large task - recommend creating a branch first.
+2. **Branch check**: Run `git rev-parse --abbrev-ref HEAD`. If on `main` or `master` for any code-change task (Small/Medium/Large), push back:
+   > ⚠️ **Odin pushback**: You're on `main`. Committing here makes rollback harder — recommend a branch.
    Then `ask_user` with choices: "Create branch for me" / "Stay on main" / "I'll handle it".
    If "Create branch for me": `git checkout -b odin/{task_id}`.
 

@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.11 — Branch protection for Small tasks
+
+- **Branch check expanded**: Git Hygiene branch check now fires on all code-change sizes (Small/Medium/Large), not just Medium/Large. Prevents Small tasks from committing directly to `main` without warning.
+
 ## 0.9.10 — Codex benchmark improvements + continuation recovery
 
 - **Gate formatting**: Standardized loop-entry gate to use `🚫 GATE:` heading pattern matching all other gates — Codex was missing it due to inconsistent formatting
