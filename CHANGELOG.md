@@ -2,6 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.12 — Plan handling + branch reuse fixes
+
+- **Bring-your-own-plan**: Investigation tasks can now invoke Frigg to review a user-provided plan file — previously Investigation skipped Step 3 entirely, making Frigg unreachable for plan review requests.
+- **Post-Frigg approval gate**: `ask_user` after Frigg review is now a formal `🚫 GATE`, not just prose instruction. Prevents the "loop started, no continue prompt" stall where the model continued silently after Frigg returned.
+- **Frigg timeout**: Frigg now has a 10-minute timeout matching reviewer timeouts in Step 5c. Frigg gate query updated to accept `review-frigg-timeout`. Prevents indefinite stall if Frigg `task()` call hangs.
+- **Plan path resolution**: When the user provides an existing plan file, Step 3b no longer writes a duplicate to `.github/odin/plans/`. The SQL ledger row is sufficient proof of planning.
+- **Branch-reuse detection**: Git Hygiene now detects when a new task is on an `odin/` branch from a different task and pushes back. Includes carve-out for Step 10 PR feedback re-entry.
+
 ## 0.9.11 — Branch protection for Small tasks + loop-bypass reinforcement
 
 - **Branch check expanded**: Git Hygiene branch check now fires on all code-change sizes (Small/Medium/Large), not just Medium/Large. Prevents Small tasks from committing directly to `main` without warning.
