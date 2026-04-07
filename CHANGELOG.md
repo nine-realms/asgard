@@ -2,6 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.9 — Mimir on all Small tasks
+
+- **Small task review**: Mimir now runs on every Small task in standalone mode — every code change gets at least one adversarial reviewer
+- **Step 5c gates**: Added Small gate (Mimir count ≥ 1) alongside existing Medium (≥ 2) and Large (≥ 5) gates
+- **Pre-commit gate**: Expanded from Medium/Large to all code-change sizes — Small tasks now gated on Mimir review
+- **Skill file**: Updated `odin-review-prompts` with Small task standalone context and panel_list instructions
+- **Docs/README**: Updated Task Sizing descriptions and Council table to reflect Mimir's expanded scope
+
 ## 0.9.8 — Documentation enhancements
 
 - **GitHub Pages**: Expanded "Why Adversarial?" problem section with side-by-side comparison grid (single agent failures vs Asgard approach)

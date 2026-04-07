@@ -8,7 +8,8 @@ description: Review prompt templates, file-type classification, model selection,
 This skill is a **hard dependency** for Odin's Step 5c adversarial review. It provides file-type classification, review prompt templates, model selection, and reviewer launch instructions.
 
 **Expected check names** (must match the gate queries in `odin.agent.md` Step 5c):
-- `review-tyr`, `review-mimir` (Medium + Large)
+- `review-mimir` (Small + Medium + Large)
+- `review-tyr` (Medium + Large)
 - `review-heimdall`, `review-thor`, `review-loki` (Large only)
 - Timeout variants: `review-{name}-timeout`
 
@@ -136,7 +137,7 @@ prompt: "{selected_review_prompt}"
 
 INSERT verdict: `phase = 'review'`, `check_name = 'review-tyr'`.
 
-### Mimir (required — Medium + Large)
+### Mimir (required — Small + Medium + Large)
 
 ```
 agent_type: "asgard:mimir"
@@ -151,9 +152,20 @@ prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {lis
          </STAGED_DIFF>"
 ```
 
-Set `{panel_list}` based on task size:
+Set review context based on task size:
+- **Small**: use `review_context=standalone` (Mimir is the sole reviewer — omit `panel_reviewers`)
+- **Medium**: `review_context=panel, panel_reviewers=tyr,mimir`
+- **Large**: `review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki`
+
+Set `{panel_list}` based on task size (for Medium/Large prompt substitution):
 - **Medium**: `tyr,mimir`
 - **Large**: `tyr,mimir,heimdall,thor,loki`
+
+For Small tasks, the prompt's review context line becomes:
+```
+review_context=standalone
+```
+For Medium and Large, substitute `{panel_list}` into the template above.
 
 > **Mimir** — guardian of the Well of Wisdom. Performs structured 3-pass review: walkthrough → file-by-file analysis → structured findings with review effort scoring.
 
