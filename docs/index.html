@@ -771,6 +771,177 @@
     }
 
     /* ═══════════════════════════════════════════════
+       PROBLEM COMPARISON GRID
+       ═══════════════════════════════════════════════ */
+    .problem-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 3rem;
+      max-width: 900px;
+    }
+
+    .problem-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .problem-col-header {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid;
+      margin-bottom: 0.25rem;
+    }
+
+    .problem-col-header.col-single {
+      color: #ff5f57;
+      border-color: rgba(255, 95, 87, 0.4);
+    }
+
+    .problem-col-header.col-asgard {
+      color: #28c840;
+      border-color: rgba(40, 200, 64, 0.4);
+    }
+
+    .problem-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+
+    .problem-icon {
+      flex-shrink: 0;
+      font-size: 0.85rem;
+      margin-top: 0.15rem;
+    }
+
+    .problem-icon.bad { color: #ff5f57; }
+    .problem-icon.good { color: #28c840; }
+
+    .problem-row strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════
+       THE ARMORY / SKILLS
+       ═══════════════════════════════════════════════ */
+    .armory {
+      background:
+        radial-gradient(ellipse 60% 50% at 30% 50%, rgba(100, 60, 180, 0.04) 0%, transparent 60%),
+        var(--bg-deep);
+    }
+
+    .armory-inner {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 6rem 2rem;
+    }
+
+    .armory-intro {
+      font-size: clamp(1rem, 2vw, 1.1rem);
+      color: var(--text-muted);
+      max-width: 720px;
+      line-height: 1.7;
+      font-weight: 300;
+      margin-bottom: 2.5rem;
+    }
+
+    .armory-intro strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .armory-intro code {
+      color: var(--ice);
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.9em;
+    }
+
+    .armory-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .skill-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-ink);
+      border-radius: 10px;
+      padding: 1.75rem 1.5rem;
+      position: relative;
+      transition:
+        transform var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition);
+    }
+
+    .skill-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--gold);
+      box-shadow: 0 0 20px var(--gold-dim);
+    }
+
+    .skill-step {
+      display: inline-block;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.65rem;
+      color: var(--ice);
+      background: var(--ice-dim);
+      border: 1px solid rgba(80, 200, 255, 0.2);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+    }
+
+    .skill-name {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .skill-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .armory-callout {
+      background: rgba(80, 200, 255, 0.05);
+      border: 1px solid rgba(80, 200, 255, 0.15);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      max-width: 720px;
+    }
+
+    .armory-callout p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    .armory-callout strong {
+      color: var(--ice);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════
        INSTALL SECTION
        ═══════════════════════════════════════════════ */
     .install {
@@ -865,6 +1036,10 @@
       .runes-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      .armory-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     @media (max-width: 768px) {
@@ -900,6 +1075,19 @@
 
       .runes-grid {
         grid-template-columns: 1fr;
+      }
+
+      .armory-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .armory-inner {
+        padding: 4rem 1.25rem;
+      }
+
+      .problem-comparison {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
       }
 
       .runes-inner,
@@ -990,6 +1178,7 @@
       <li><a href="#runes">Features</a></li>
       <li><a href="#pantheon">Pantheon</a></li>
       <li><a href="#odin-loop">The Loop</a></li>
+      <li><a href="#armory">Skills</a></li>
       <li><a href="#evidence">Evidence</a></li>
       <li><a href="#install">Install</a></li>
     </ul>
@@ -1037,12 +1226,51 @@
       <p>
         A single AI writes code, reviews its own work, and calls it done.
         No second opinion. No pushback. No proof it actually ran the tests.
-        Asgard takes a different approach&hairsp;— <strong>seven agents</strong>, each with a different role.
-        <strong>Odin</strong> builds. <strong>Frigg</strong> reviews the plan.
-        <strong>Mimir</strong> and <strong>Tyr</strong> examine the work.
-        Then <strong>three adversarial models</strong> attack it independently.
-        What survives the gauntlet is what you see.
+        Asgard takes a different approach&hairsp;&mdash; <strong>seven agents</strong>, each with a different role,
+        each catching what the others miss.
       </p>
+
+      <div class="problem-comparison">
+        <div class="problem-col">
+          <div class="problem-col-header col-single">Single Agent</div>
+          <div class="problem-row">
+            <span class="problem-icon bad" aria-hidden="true">✗</span>
+            <span>Reviews its own work. <strong>Same blind spots every time.</strong></span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon bad" aria-hidden="true">✗</span>
+            <span>Claims tests pass. <strong>No proof it ran them.</strong></span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon bad" aria-hidden="true">✗</span>
+            <span>Writes "no regressions" from memory. <strong>Hallucinated confidence.</strong></span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon bad" aria-hidden="true">✗</span>
+            <span>Plans and builds in one shot. <strong>Scope creep baked in.</strong></span>
+          </div>
+        </div>
+
+        <div class="problem-col">
+          <div class="problem-col-header col-asgard">The Asgard Council</div>
+          <div class="problem-row">
+            <span class="problem-icon good" aria-hidden="true">✓</span>
+            <span><strong>Up to five independent reviewers</strong> from different model families attack the diff.</span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon good" aria-hidden="true">✓</span>
+            <span>Every check <strong>INSERT'd into a SQL ledger.</strong> Evidence is a SELECT, not a summary.</span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon good" aria-hidden="true">✓</span>
+            <span><strong>Baseline snapshot</strong> before changes. Same checks after. <strong>Regressions are math, not prose.</strong></span>
+          </div>
+          <div class="problem-row">
+            <span class="problem-icon good" aria-hidden="true">✓</span>
+            <span><strong>Frigg reviews the plan</strong> on a different model before a line is written.</span>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1058,20 +1286,20 @@
 
         <div class="rune-card">
           <span class="rune-symbol" aria-hidden="true">ᛟ</span>
-          <h3>Adversarial Review</h3>
-          <p>Five AI models review every change independently&hairsp;&mdash; different model families, different blind spots. What one misses, another catches.</p>
+          <h3>Cross-Model Diversity</h3>
+          <p>Frigg reviews the plan on a different AI family than Odin. Adversarial reviewers span three model families. Blind spots from one family get caught by another.</p>
         </div>
 
         <div class="rune-card">
           <span class="rune-symbol" aria-hidden="true">ᛏ</span>
-          <h3>SQL Verification Ledger</h3>
-          <p>Every build, test, and review result is INSERT'd into a SQL database. The evidence bundle is a SELECT&hairsp;&mdash; not a summary the AI wrote from memory.</p>
+          <h3>Task Sizing</h3>
+          <p>Every task is classified Small, Medium, or Large. Small ships fast. Medium gets Tyr&nbsp;+&nbsp;Mimir. Large adds three more reviewers for five independent verdicts.</p>
         </div>
 
         <div class="rune-card">
           <span class="rune-symbol" aria-hidden="true">ᚱ</span>
-          <h3>Baseline Snapshots</h3>
-          <p>System state captured before any change. After implementation, the same checks run again. Regressions are impossible to hide.</p>
+          <h3>Commit Gates</h3>
+          <p>Odin never auto-commits, auto-pushes, or creates a PR without asking. Every deployment decision goes through you&hairsp;&mdash; the human in the loop.</p>
         </div>
 
         <div class="rune-card">
@@ -1131,8 +1359,8 @@
           <img src="assets/images/tyr.png" alt="Tyr — God of Law" class="card-avatar" loading="lazy" width="100" height="100">
         </picture>
         <h3 class="card-name">Tyr</h3>
-        <div class="card-role">Standards & Enforcement</div>
-        <p class="card-desc">God of law. Tyr enforces coding standards, naming conventions, and best practices. The agent that keeps your codebase disciplined.</p>
+        <div class="card-role">Convention Enforcer</div>
+        <p class="card-desc">God of law. Tyr runs 10 structural checks&hairsp;&mdash; method length, nesting depth, naming, duplication, error handling, async correctness, and more. Every criticism comes with a concrete fix.</p>
       </article>
 
       <article class="card">
@@ -1141,8 +1369,8 @@
           <img src="assets/images/mimir.png" alt="Mimir — The Wisest of All Beings" class="card-avatar" loading="lazy" width="100" height="100">
         </picture>
         <h3 class="card-name">Mimir</h3>
-        <div class="card-role">First-Line Review</div>
-        <p class="card-desc">The wisest of all beings. Mimir is your first-line reviewer&hairsp;— he examines Odin's work and catches issues before the adversarial panel weighs in.</p>
+        <div class="card-role">Deep Analysis</div>
+        <p class="card-desc">The wisest of all beings. Mimir runs a 3-pass review with 23 cross-cutting heuristics&hairsp;&mdash; tracing data flow, cache scope, idempotency, and boundary conditions that hide between files.</p>
       </article>
 
       <article class="card">
@@ -1151,8 +1379,8 @@
           <img src="assets/images/loki.png" alt="Loki — The Trickster" class="card-avatar" loading="lazy" width="100" height="100">
         </picture>
         <h3 class="card-name">Loki</h3>
-        <div class="card-role">Adversarial Review</div>
-        <p class="card-desc">The trickster. Loki reviews Odin's work through a different lens, powered by a competing model. If there's a flaw in the logic, he'll find it.</p>
+        <div class="card-role">Adversarial Trickster</div>
+        <p class="card-desc">The trickster. Loki hunts subtle, devious problems&hairsp;&mdash; edge cases that pass every other review, race conditions hidden in happy paths, the bugs that ship to production.</p>
       </article>
 
       <article class="card">
@@ -1161,8 +1389,8 @@
           <img src="assets/images/thor.png" alt="Thor — God of Thunder" class="card-avatar" loading="lazy" width="100" height="100">
         </picture>
         <h3 class="card-name">Thor</h3>
-        <div class="card-role">Adversarial Review</div>
-        <p class="card-desc">God of thunder. Thor hits Odin's code with a second adversarial review from a different model. Brute-force scrutiny.</p>
+        <div class="card-role">Cross-Family Audit</div>
+        <p class="card-desc">God of thunder. Thor hits the code from a second model family&hairsp;&mdash; raw structural analysis that catches what nuanced reviewers rationalize away.</p>
       </article>
 
       <article class="card">
@@ -1171,8 +1399,8 @@
           <img src="assets/images/heimdall.png" alt="Heimdall — Guardian of the Bifrost" class="card-avatar" loading="lazy" width="100" height="100">
         </picture>
         <h3 class="card-name">Heimdall</h3>
-        <div class="card-role">Adversarial Review</div>
-        <p class="card-desc">Guardian of the Bifrost. Heimdall watches from a third vantage point&hairsp;— a third model reviewing for what the others missed.</p>
+        <div class="card-role">Cross-Model Sentinel</div>
+        <p class="card-desc">Guardian of the Bifrost. Heimdall provides the baseline cross-model review&hairsp;&mdash; a different AI family seeing the diff with fresh eyes and no shared blind spots.</p>
       </article>
 
     </div>
@@ -1253,6 +1481,50 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </section>
+
+  <hr class="bifrost" aria-hidden="true">
+
+  <!-- ═══════════════════════════════════════════════
+       THE ARMORY / SKILLS
+       ═══════════════════════════════════════════════ -->
+  <section class="armory" id="armory">
+    <div class="armory-inner">
+      <h2 class="section-label">The Armory</h2>
+      <p class="armory-intro">
+        Odin's full instruction set is <strong>700+ lines</strong>. Loading all of it on every turn would bloat
+        the context window and hurt compliance. Instead, step-specific knowledge lives in <strong>skill files</strong>
+        that load on demand&hairsp;&mdash; only when their step executes.
+      </p>
+
+      <div class="armory-grid">
+        <div class="skill-card">
+          <span class="skill-step">Step 5c · Adversarial Review</span>
+          <h3 class="skill-name">Review Prompts</h3>
+          <p>Three review templates (spec, doc, code), model selection matrix, and all five reviewer launch configurations. Loaded once when Ragnarök begins.</p>
+        </div>
+
+        <div class="skill-card">
+          <span class="skill-step">Step 5e · Presentation</span>
+          <h3 class="skill-name">Evidence Bundle</h3>
+          <p>The Evidence Bundle template, confidence level definitions, and formatting rules. Loaded when building the final proof artifact.</p>
+        </div>
+
+        <div class="skill-card">
+          <span class="skill-step">Step 1b · Boosting</span>
+          <h3 class="skill-name">Recall</h3>
+          <p>Session history query templates and filtering rules. Loaded during the Mímisbrunnr phase to retrieve lessons from past tasks.</p>
+        </div>
+      </div>
+
+      <div class="armory-callout">
+        <p>
+          <strong>Lean by design.</strong> Three skills keep the context window small and responses fast.
+          More skills means more invocation points to remember&hairsp;&mdash; diminishing returns.
+          Future optimization targets prose compression, not further extraction.
+        </p>
       </div>
     </div>
   </section>

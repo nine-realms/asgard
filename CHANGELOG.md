@@ -2,6 +2,15 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.8 — Documentation enhancements
+
+- **GitHub Pages**: Expanded "Why Adversarial?" problem section with side-by-side comparison grid (single agent failures vs Asgard approach)
+- **GitHub Pages**: Added "The Armory" skills section with on-demand loading cards and 3-skill ceiling rationale
+- **GitHub Pages**: Fixed false claims — "five models on every change" corrected to "up to five" (size-dependent), removed redundant Runes (Adversarial/SQL/Baseline) that duplicated the comparison grid, replaced with Cross-Model Diversity, Task Sizing, Commit Gates
+- **GitHub Pages**: Rewrote Pantheon cards for accuracy — Tyr (10-criteria enforcer), Mimir (23-heuristic deep analysis), Heimdall/Thor/Loki (distinct roles instead of generic "Adversarial Review")
+- **GitHub Pages**: Reordered sections — Armory before Evidence Bundle for better narrative arc
+- **README**: Synced all content changes
+
 ## 0.9.7 — Address PR #13 review feedback
 
 - **MFA forward reference**: Step 1 Runtime Gate failure path now explicitly notes it is the one allowed forward reference before MFA completes — eliminates instruction conflict with "do not read further" preamble
