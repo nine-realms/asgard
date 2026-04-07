@@ -8,7 +8,8 @@ description: Review prompt templates, file-type classification, model selection,
 This skill is a **hard dependency** for Odin's Step 5c adversarial review. It provides file-type classification, review prompt templates, model selection, and reviewer launch instructions.
 
 **Expected check names** (must match the gate queries in `odin.agent.md` Step 5c):
-- `review-tyr`, `review-mimir` (Medium + Large)
+- `review-mimir` (Small + Medium + Large)
+- `review-tyr` (Medium + Large)
 - `review-heimdall`, `review-thor`, `review-loki` (Large only)
 - Timeout variants: `review-{name}-timeout`
 
@@ -115,9 +116,10 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 
 ## 3. Prompt Render Order
 
-When materializing reviewer prompts, Odin expands in two phases:
-1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
-2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
+When materializing reviewer prompts, Odin expands in three phases (matching the agent file's Step 5c.3 order):
+1. **Resolve model variables**: replace `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` with concrete model strings from the selection tables in Sections 4a and 5.
+2. **Evaluate conditionals**: expand `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text based on whether spec files are in the diff.
+3. **Substitute remaining placeholders**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{panel_list}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
 ---
 
@@ -136,7 +138,7 @@ prompt: "{selected_review_prompt}"
 
 INSERT verdict: `phase = 'review'`, `check_name = 'review-tyr'`.
 
-### Mimir (required — Medium + Large)
+### Mimir (required — Small + Medium + Large)
 
 ```
 agent_type: "asgard:mimir"
@@ -151,9 +153,20 @@ prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {lis
          </STAGED_DIFF>"
 ```
 
-Set `{panel_list}` based on task size:
+Set review context based on task size:
+- **Small**: use `review_context=standalone` (Mimir is the sole reviewer — omit `panel_reviewers`)
+- **Medium**: `review_context=panel, panel_reviewers=tyr,mimir`
+- **Large**: `review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki`
+
+Set `{panel_list}` based on task size (for Medium/Large prompt substitution):
 - **Medium**: `tyr,mimir`
 - **Large**: `tyr,mimir,heimdall,thor,loki`
+
+For Small tasks, the prompt's review context line becomes:
+```
+review_context=standalone
+```
+For Medium and Large, substitute `{panel_list}` into the template above.
 
 > **Mimir** — guardian of the Well of Wisdom. Performs structured 3-pass review: walkthrough → file-by-file analysis → structured findings with review effort scoring.
 

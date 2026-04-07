@@ -19,10 +19,10 @@ A single AI agent writes code, reviews its own work, and calls it done. Same bli
 
 | Agent | Role |
 |-------|------|
-| **Odin** (`asgard:odin`) | Orchestrator. Runs the full verification loop: boost, survey, plan, implement, verify, present. Delegates plan review to Frigg and adversarial code review to Tyr + Mimir (+ Heimdall/Thor/Loki for large changes). |
+| **Odin** (`asgard:odin`) | Orchestrator. Runs the full verification loop: boost, survey, plan, implement, verify, present. Delegates plan review to Frigg and adversarial code review to Mimir on every code-change task, plus Tyr on Medium/Large (+ Heimdall/Thor/Loki for Large). |
 | **Frigg** (`asgard:frigg`) | Plan reviewer. Reviews implementation plans before coding begins — catches architectural blind spots, scope creep, and simpler alternatives. Always spawned on a different model family than Odin for cross-model diversity. |
 | **Tyr** (`asgard:tyr`) | Convention enforcer. Runs 10 structural checks — method length, nesting depth, naming, duplication, error handling, async correctness, and more. Every criticism includes a concrete fix. |
-| **Mimir** (`asgard:mimir`) | Deep analysis reviewer. 3-pass review with 23 cross-cutting heuristics — tracing data flow, cache scope, idempotency, and boundary conditions that hide between files. |
+| **Mimir** (`asgard:mimir`) | First-line reviewer on every code-change task. 3-pass review with 23 cross-cutting heuristics — tracing data flow, cache scope, idempotency, and boundary conditions that hide between files. Runs standalone on Small tasks, alongside Tyr on Medium/Large. |
 
 Heimdall, Thor, and Loki are also invoked by Odin on Large tasks — three different model families providing cross-model signal. Heimdall is the sentinel (baseline review), Thor is brute-force structural analysis, and Loki is the adversarial trickster hunting subtle edge cases.
 
