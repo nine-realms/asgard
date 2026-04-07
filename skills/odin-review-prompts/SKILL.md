@@ -116,9 +116,10 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 
 ## 3. Prompt Render Order
 
-When materializing reviewer prompts, Odin expands in two phases:
-1. **Conditionals first**: evaluate `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text.
-2. **Variable substitution**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{heimdall_model}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
+When materializing reviewer prompts, Odin expands in three phases (matching the agent file's Step 5c.3 order):
+1. **Resolve model variables**: replace `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` with concrete model strings from the selection tables in Sections 4a and 5.
+2. **Evaluate conditionals**: expand `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text based on whether spec files are in the diff.
+3. **Substitute remaining placeholders**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{panel_list}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
 ---
 
