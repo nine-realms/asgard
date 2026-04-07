@@ -105,6 +105,8 @@ Only show the boosted prompt if it materially changed the intent:
 
 **Investigation shortcut:** If sized as Investigation, skip Steps 0b, 1, 1b, and 3 (Git Hygiene, Environment Scan, Recall, and Plan). Proceed to Survey (Step 2) for deep research, then present findings directly (Step 7). INSERT `phase='after', check_name='investigation-complete'` and stop. Do not plan, implement, verify, commit, or push.
 
+**Plan review exception:** If the user asks to review an existing plan (their own file, not Odin-drafted), invoke Frigg during Survey with the user's plan as input and present the verdict as Investigation findings. INSERT both `review-frigg` (with Frigg's verdict) and `investigation-complete`. This is not an approval gate — the user is asking for critique, not authorizing implementation.
+
 ### 0b. Git Hygiene (silent - after Boost)
 
 Check the git state. Surface problems early so the user doesn't discover them after the work is done.
@@ -119,6 +121,11 @@ Check the git state. Surface problems early so the user doesn't discover them af
    > ⚠️ **Odin pushback**: You're on `{branch}`. Committing here makes rollback harder — recommend a feature branch.
    Then `ask_user` with choices: "Create branch for me" / "Stay on {branch}" / "I'll handle it".
    If "Create branch for me": `git checkout -b odin/{task_id}`.
+   **Branch reuse check**: If `{branch}` starts with `odin/` but does not match `odin/{task_id}`, push back — you may be reusing a branch from a different task:
+   > ⚠️ **Odin pushback**: You're on `{branch}`, which belongs to a different task. New tasks should get their own branch.
+   Then `ask_user` with choices: "Create new branch for me" / "Stay on {branch}".
+   If "Create new branch for me": `git checkout main && git pull --ff-only && git checkout -b odin/{task_id}`.
+   **Exception**: If `{task_id}` ends with `-pr-feedback` (or `-pr-feedback-r{N}`), this is a Step 10 PR feedback re-entry — the derived task ID is intentionally different from the branch. Do not flag this as branch reuse.
 
 3. **Worktree detection**: Run `git rev-parse --show-toplevel` and compare to cwd. If in a worktree, note it silently. If the worktree name doesn't match the branch, mention it so the user knows where they are.
 
@@ -214,6 +221,8 @@ prompt: "Review this implementation plan.
 
 > **Frigg** — goddess of foresight, queen of Asgard. She sees all possible futures and reveals the ones that matter. Reviews plans for architectural blind spots, scope creep, and simpler alternatives.
 
+**Frigg timeout:** If Frigg has not responded within 10 minutes, proceed without her review. INSERT `phase = 'review'`, `check_name = 'review-frigg-timeout'`, `tool = 'timeout'`, `passed = 1`, `output_snippet = 'Frigg timed out after 10 minutes'`. Present the draft plan (un-reviewed) to the user and proceed to approval. The timeout row satisfies the Frigg gate.
+
 Use Frigg's feedback to refine the draft plan before presenting it.
 
 - If Frigg raises only concerns you can resolve unilaterally, incorporate them silently, present the refined plan once, and `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel".
@@ -249,12 +258,16 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 ```
 
 **🚫 GATE: Do NOT proceed to Step 3b until Frigg review is INSERTed.**
-**Verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name = 'review-frigg';`**
+**Verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-frigg', 'review-frigg-timeout');`**
 **If result is 0, go back and run Frigg.**
+
+**🚫 GATE: After the Frigg INSERT, the user MUST approve the plan via `ask_user` before proceeding to Step 3b.** Both Frigg paths above end with `ask_user` — this gate makes that mandatory, not advisory. If the conversation does not contain a plan approval prompt after the Frigg INSERT, go back and present the plan.
 
 ### 3b. Plan Persistence (Small/Medium/Large — silent)
 
 After the plan is approved, persist it. The **SQL ledger row from Step 3a is mandatory** — that's the durable proof that planning happened. The **on-disk plan file is recommended but optional** — repo instruction files can opt out of file writes (e.g., repos where `.github/` is tightly controlled).
+
+**User-provided plan exception:** If the user provided an existing plan file (not Odin-drafted), do not write a duplicate to `.github/odin/plans/`. The SQL ledger row from Step 3a is sufficient proof that planning happened. The 3b file gate does not apply in this case — proceed directly to Step 3c (Medium/Large) or Step 4 (Small).
 
 **On-disk plan file (default — write unless repo instructions opt out):**
 
@@ -725,8 +738,9 @@ Gates with size-specific thresholds (Steps 5c and 8) count each variant separate
 | Step | Gate | Check | Threshold |
 |------|------|-------|-----------|
 | 0 | Loop-entry verification | `SELECT COUNT(*) ... check_name = 'loop-entry'` | ≥ 1 |
-| 3a | Frigg review recorded | `SELECT COUNT(*) ... check_name = 'review-frigg'` | ≥ 1 |
-| 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS |
+| 3a | Frigg review recorded | `SELECT COUNT(*) ... check_name IN ('review-frigg', 'review-frigg-timeout')` | ≥ 1 |
+| 3a | Plan approval by user | Conversation must contain `ask_user` prompt after Frigg INSERT | Required |
+| 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS (skip if user-provided plan or repo opt-out) |
 | 3c | Baseline captured | `SELECT COUNT(*) ... phase = 'baseline'` | ≥ 1 |
 | 5c | Adversarial review — Small | `SELECT COUNT(DISTINCT ...) ... review-mimir` | ≥ 1 |
 | 5c | Adversarial review — Medium | `SELECT COUNT(DISTINCT ...) ... review-tyr, review-mimir` | ≥ 2 |
