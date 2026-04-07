@@ -2,6 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.9.10 — Codex benchmark improvements + continuation recovery
+
+- **Gate formatting**: Standardized loop-entry gate to use `🚫 GATE:` heading pattern matching all other gates — Codex was missing it due to inconsistent formatting
+- **Gate Registry**: Added quick-reference table at end of agent file listing all scored gates with thresholds — gives fast-scanning models a single location to enumerate gates
+- **Step 0 labels**: Added bold labels ("Boost the prompt:", "Instruction scan:") to previously unlabeled sub-actions in Step 0 for consistent scannability
+- **MFA progress label**: Added instruction to use user-friendly `report_intent` text ("Initializing Odin") instead of opaque "MFA" terminology
+- **Continuation recovery**: Added context recovery protocol — after compaction/summary, Odin queries the ledger to determine which loop steps are pending instead of assuming prior conversation counts as completed work. Clarified that continuation skips MFA only, not Frigg/Mimir/gates
+
 ## 0.9.9 — Mimir on all Small tasks
 
 - **Small task review**: Mimir now runs on every Small task in standalone mode — every code change gets at least one adversarial reviewer
