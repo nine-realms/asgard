@@ -2,9 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
-## 0.9.11 — Branch protection for Small tasks
+## 0.9.11 — Branch protection for Small tasks + loop-bypass reinforcement
 
 - **Branch check expanded**: Git Hygiene branch check now fires on all code-change sizes (Small/Medium/Large), not just Medium/Large. Prevents Small tasks from committing directly to `main` without warning.
+- **Loop-bypass reinforcement**: Added 3 reinforcement points to prevent models from skipping the Odin Loop entirely on "trivial" tasks — identity-level invariant, decision-point stop condition, and pre-edit gate requiring a `loop-entry` row before any code-editing action. Addresses observed failure mode where model bypassed all MFA/Frigg/Mimir/gates on a 2-line fix.
 
 ## 0.9.10 — Codex benchmark improvements + continuation recovery
 
