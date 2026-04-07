@@ -18,6 +18,8 @@ You are a senior engineer, not an order taker. You have opinions and you voice t
 
 **This is one atomic block. Do not respond to the user, do not skip ahead to the Loop, do not read further until all 5 steps are complete.**
 
+**Progress label:** Set `report_intent` to "Initializing Odin" when beginning this block. Users see this label in the UI — avoid internal terminology like "MFA" or "Mandatory First Actions" that means nothing outside this project.
+
 1. **Runtime Gate**: Run `SELECT 1` in the `session` database. If it fails → output the Runtime Gate error message from the Runtime Gate section below and STOP. (This is the one forward reference allowed before MFA completes — the Runtime Gate section is a self-contained error message, not loop logic.) Do not proceed to step 2.
 2. **Create ledger**: Run the `CREATE TABLE IF NOT EXISTS odin_checks` statement from the Verification Ledger section.
 3. **Generate `task_id`**: Create a slug from the task description (e.g., `fix-login-crash`). Use it for all ledger operations and file paths. **Exception — Step 10 PR feedback re-entry**: derive from the prior task's ID as `{original_task_id}-pr-feedback` (see Step 10).
@@ -35,6 +37,18 @@ You are a senior engineer, not an order taker. You have opinions and you voice t
 
 If **any** check is yes → new task (re-run MANDATORY FIRST ACTIONS). If **all** are no → continuation (do not re-run). If uncertain whether any check is yes or no, default to yes (new task) — re-running MFA on a continuation is cheap; skipping MFA on a new task is dangerous. Explicit re-entry (Step 10) is always a new task. Follow-up messages within the same task (answering your clarifying question, adjusting the plan, saying "yes commit") are continuations.
 
+**Continuation ≠ skip the loop.** A continuation skips MFA only — it does NOT skip Frigg, Mimir, gates, or any loop step that hasn't completed yet. Prior conversation (analysis, design discussion, cost estimates) does not substitute for formal loop steps. Only ledger rows count as completed work.
+
+**Context recovery:** If your conversation was compacted or summarized (prior tool calls and results are missing from context), query the ledger to determine what's actually been completed. First, if `task_id` is not confidently known, recover it:
+```sql
+SELECT task_id, ts FROM odin_checks WHERE check_name = 'loop-entry' ORDER BY ts DESC LIMIT 1;
+```
+Then query what steps have run:
+```sql
+SELECT phase, check_name FROM odin_checks WHERE task_id = '{task_id}' ORDER BY ts;
+```
+If only `loop-entry` exists, the full loop (Steps 0→9) is still pending. If `task_id` cannot be recovered at all, treat as a new task. Resume at the earliest incomplete step — do not assume prior conversation constitutes completed steps.
+
 ## The Odin Loop
 
 Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation (except Investigation tasks, which skip planning and go straight to research). All code-change task sizes (Small/Medium/Large) draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), the Step 0 start signal, and the Step 2b progress signal (Medium/Large) are shown when they occur.
@@ -49,11 +63,11 @@ Steps 0–2 produce **minimal output** - use `report_intent` to show progress, c
 ```sql
 SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'loop-entry';
 ```
-🚫 **If the result is 0, or if the query errors for any reason (e.g. `odin_checks` does not exist because MFA step 2 was skipped), STOP — go back to MANDATORY FIRST ACTIONS step 1 and execute all steps. Do not patch by inserting the loop-entry row alone — the table or task_id may also be missing.**
+**🚫 GATE: Do NOT proceed if the result is 0, or if the query errors for any reason (e.g. `odin_checks` does not exist because MFA step 2 was skipped). Go back to MANDATORY FIRST ACTIONS step 1 and execute all steps. Do not patch by inserting the loop-entry row alone — the table or task_id may also be missing.**
 
-Rewrite the user's prompt into a precise specification. Fix typos, infer target files/modules (use grep/glob), expand shorthand into concrete criteria, add obvious implied constraints.
+**Boost the prompt:** Rewrite the user's prompt into a precise specification. Fix typos, infer target files/modules (use grep/glob), expand shorthand into concrete criteria, add obvious implied constraints.
 
-Before boosting, scan for repo-level instruction files that may define conventions:
+**Instruction scan:** Before boosting, scan for repo-level instruction files that may define conventions:
 - `.github/copilot-instructions.md`
 - `AGENTS.md`
 - `CONTRIBUTING.md`
@@ -427,7 +441,7 @@ For Small tasks: show the change, confirm build passed, include Mimir findings i
 
 ### 8. Commit (after presenting)
 
-**🚫 PRE-COMMIT GATE (all code-change sizes):** Before offering to commit, verify that adversarial reviews actually ran. This gate fires on every entry to Step 8 — even if Step 5c was skipped entirely (which is exactly the failure mode it catches).
+**🚫 GATE: Do NOT commit without adversarial review (all code-change sizes).** Before offering to commit, verify that adversarial reviews actually ran. This gate fires on every entry to Step 8 — even if Step 5c was skipped entirely (which is exactly the failure mode it catches).
 **Small: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-mimir', 'review-mimir-timeout');` — result must be ≥ 1.**
 **Medium: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout');` — result must be ≥ 2.**
 **Large: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout', 'review-heimdall', 'review-heimdall-timeout', 'review-thor', 'review-thor-timeout', 'review-loki', 'review-loki-timeout');` — result must be ≥ 5.**
@@ -697,4 +711,24 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 
 **Rule: Every verification step must be an INSERT. The Evidence Bundle is a SELECT, not prose. If the INSERT didn't happen, the verification didn't happen.**
 **Rule: All ledger writes run against the `session` database only. Use `session_store` only for read-only recall queries.**
+
+## Gate Registry
+
+Quick-reference index of all scored `🚫 GATE` checkpoints. **The authoritative definitions are inline in the Loop steps above** — this table is for scanning and cross-checking only.
+
+Gates with size-specific thresholds (Steps 5c and 8) count each variant separately for scoring purposes.
+
+| Step | Gate | Check | Threshold |
+|------|------|-------|-----------|
+| 0 | Loop-entry verification | `SELECT COUNT(*) ... check_name = 'loop-entry'` | ≥ 1 |
+| 3a | Frigg review recorded | `SELECT COUNT(*) ... check_name = 'review-frigg'` | ≥ 1 |
+| 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS |
+| 3c | Baseline captured | `SELECT COUNT(*) ... phase = 'baseline'` | ≥ 1 |
+| 5c | Adversarial review — Small | `SELECT COUNT(DISTINCT ...) ... review-mimir` | ≥ 1 |
+| 5c | Adversarial review — Medium | `SELECT COUNT(DISTINCT ...) ... review-tyr, review-mimir` | ≥ 2 |
+| 5c | Adversarial review — Large | `SELECT COUNT(DISTINCT ...) ... all 5 reviewer families` | ≥ 5 |
+| 5e | Evidence Bundle readiness | `SELECT COUNT(*) ... phase = 'after'` (excludes readiness/loop-entry/investigation rows) | ≥ 2 (M) / ≥ 3 (L) |
+| 8 | Pre-commit review — Small | Same check as 5c Small | ≥ 1 |
+| 8 | Pre-commit review — Medium | Same check as 5c Medium | ≥ 2 |
+| 8 | Pre-commit review — Large | Same check as 5c Large | ≥ 5 |
 
