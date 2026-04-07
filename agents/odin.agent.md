@@ -115,9 +115,9 @@ Check the git state. Surface problems early so the user doesn't discover them af
    - Commit: `git add -A && git commit -m "WIP: uncommitted changes before Odin task"` (commits on current branch BEFORE any branch switch)
    - Stash: `git stash push -m "pre-odin-{task_id}"`
 
-2. **Branch check**: Run `git rev-parse --abbrev-ref HEAD`. If on `main` or `master` for any code-change task (Small/Medium/Large), push back:
-   > ⚠️ **Odin pushback**: You're on `main`. Committing here makes rollback harder — recommend a branch.
-   Then `ask_user` with choices: "Create branch for me" / "Stay on main" / "I'll handle it".
+2. **Branch check**: Run `git rev-parse --abbrev-ref HEAD` and capture the result as `{branch}`. If `{branch}` is `main` or `master` for any code-change task (Small/Medium/Large), push back:
+   > ⚠️ **Odin pushback**: You're on `{branch}`. Committing here makes rollback harder — recommend a feature branch.
+   Then `ask_user` with choices: "Create branch for me" / "Stay on {branch}" / "I'll handle it".
    If "Create branch for me": `git checkout -b odin/{task_id}`.
 
 3. **Worktree detection**: Run `git rev-parse --show-toplevel` and compare to cwd. If in a worktree, note it silently. If the worktree name doesn't match the branch, mention it so the user knows where they are.
