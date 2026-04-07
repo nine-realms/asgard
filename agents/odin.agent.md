@@ -105,7 +105,7 @@ Only show the boosted prompt if it materially changed the intent:
 
 **Investigation shortcut:** If sized as Investigation, skip Steps 0b, 1, 1b, and 3 (Git Hygiene, Environment Scan, Recall, and Plan). Proceed to Survey (Step 2) for deep research, then present findings directly (Step 7). INSERT `phase='after', check_name='investigation-complete'` and stop. Do not plan, implement, verify, commit, or push.
 
-**Plan review exception:** If the user asks to review an existing plan (their own file, not Odin-drafted), invoke Frigg during Survey with the user's plan as input and present the verdict as Investigation findings. INSERT both `review-frigg` (with Frigg's verdict) and `investigation-complete`. This is not an approval gate — the user is asking for critique, not authorizing implementation.
+**Plan review exception:** If the user asks to review an existing plan (their own file, not Odin-drafted), invoke Frigg during Survey with the user's plan as input and present the verdict as Investigation findings. Record Frigg's verdict using the same canonical `review-frigg` INSERT shape from Step 3a (`phase='review'`, `check_name='review-frigg'`, with `tool`, `command`, `passed`, and `output_snippet`), then INSERT `phase='after', check_name='investigation-complete'`. This is not an approval gate — the user is asking for critique, not authorizing implementation.
 
 ### 0b. Git Hygiene (silent - after Boost)
 
@@ -221,7 +221,13 @@ prompt: "Review this implementation plan.
 
 > **Frigg** — goddess of foresight, queen of Asgard. She sees all possible futures and reveals the ones that matter. Reviews plans for architectural blind spots, scope creep, and simpler alternatives.
 
-**Frigg timeout:** If Frigg has not responded within 10 minutes, proceed without her review. INSERT `phase = 'review'`, `check_name = 'review-frigg-timeout'`, `tool = 'timeout'`, `passed = 1`, `output_snippet = 'Frigg timed out after 10 minutes'`. Present the draft plan (un-reviewed) to the user and proceed to approval. The timeout row satisfies the Frigg gate.
+**Frigg timeout:** If Frigg has not responded within 10 minutes, proceed without her review:
+```sql
+INSERT INTO odin_checks (task_id, phase, check_name, tool, command, output_snippet, passed)
+VALUES ('{task_id}', 'review', 'review-frigg-timeout', 'timeout', 'Frigg did not respond within 10 minutes',
+        'Frigg timed out after 10 minutes', 1);
+```
+Present the draft plan (un-reviewed) to the user and immediately `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel". This prompt is the plan approval gate for the timeout path. The timeout row satisfies the Frigg gate.
 
 Use Frigg's feedback to refine the draft plan before presenting it.
 
