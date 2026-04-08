@@ -117,7 +117,7 @@ The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditiona
 ## 3. Prompt Render Order
 
 When materializing reviewer prompts, Odin expands in three phases (matching the agent file's Step 5c.3 order):
-1. **Resolve model variables**: replace `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` with concrete model strings from the selection tables in Sections 4a and 5.
+1. **Resolve model variables**: replace `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` with concrete model strings using the model-resolution rules in Sections 4 and 5. For `{mimir_model}`, apply this precedence: instruction-file override from `.github/copilot-instructions.md` → table Primary → Fallback on model error. For all other variables, use the table Primary → Fallback on model error.
 2. **Evaluate conditionals**: expand `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text based on whether spec files are in the diff.
 3. **Substitute remaining placeholders**: replace `{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{panel_list}`, etc. with captured values. This includes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
 
@@ -179,9 +179,11 @@ Tyr and Mimir are custom agents with rich behavioral instructions — their dive
 | Reviewer | Primary | Fallback | Rationale |
 |----------|---------|----------|-----------|
 | Tyr | `gpt-5.3-codex` | `gpt-5.4-mini` | Pattern matching (naming, nesting, duplication) — fast models handle this well |
-| Mimir | `claude-sonnet-4.6` | `gpt-5.4` | Multi-pass synthesis (walkthrough → file-by-file → findings) benefits from stronger reasoning; gives Anthropic/OpenAI cross-family diversity on every Medium task |
+| Mimir | `gpt-5.4` | `claude-sonnet-4.6` | Strong instruction-following for Mimir's structured 3-pass review; cross-family fallback ensures Mimir is available even during OpenAI API outages |
 
-**Materialization:** Before launching Tyr and Mimir, resolve `{tyr_model}` and `{mimir_model}` to concrete model strings from the Primary column. These are subject to the general materialization rule in Section 3.
+**Instruction-file override:** If the repo's `.github/copilot-instructions.md` specifies `mimir-model: {model}` (e.g., `mimir-model: claude-opus-4.6`), use that model instead of the table default. This lets teams opt into premium models per-project without changing the plugin.
+
+**Materialization:** Before launching Tyr and Mimir, resolve `{tyr_model}` and `{mimir_model}` to concrete model strings. For Mimir: use the instruction-file override if present, otherwise the table Primary. For Tyr: use the table Primary. These are subject to the general materialization rule in Section 3.
 
 **Fallback:** If the primary model is unavailable (task fails with a model error), retry with the Fallback model. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model and the substitute. This row is bookkeeping — not a review verdict.
 
@@ -197,13 +199,13 @@ Maximize model diversity across the review panel. Check Odin's **exact model** f
 
 | Odin's model | Heimdall | Thor | Loki |
 |--------------|----------|------|------|
-| `claude-opus-4.6` | `gpt-5.3-codex` | `gpt-5.4` | `claude-sonnet-4.5` |
+| `claude-opus-4.6` | `gpt-5.3-codex` | `gpt-5.4` | `claude-sonnet-4.6` |
 | Other Anthropic (Claude) | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
 | OpenAI (GPT) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `claude-opus-4.6` |
 | Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
 | Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
 
-**Why Anthropic gets two rows:** When Odin is `claude-opus-4.6`, Loki can't use the same model (self-review) or `claude-sonnet-4.6` (Mimir overlap). `claude-sonnet-4.5` gives a prior-generation Anthropic perspective. When Odin is any other Anthropic model, Loki uses `claude-opus-4.6` — the strongest available, different from both Odin and Mimir.
+**Why Anthropic gets two rows:** When Odin is `claude-opus-4.6`, Loki can't use the same model (self-review). `claude-sonnet-4.6` gives a current-generation Anthropic perspective different from Odin. Note: if Mimir falls back from `gpt-5.4` to `claude-sonnet-4.6` in this scenario, Mimir and Loki share the same model — acceptable in degraded mode. Record the overlap in Mimir's `review-mimir-model-fallback` ledger row (`forced_overlap_with=loki` in `output_snippet`). When Odin is any other Anthropic model, Loki uses `claude-opus-4.6` — the strongest available, different from both Odin and the H/T/L panel.
 
 **Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model, the substitute model, and any forced overlap. This row is bookkeeping — not a review verdict. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap in `output_snippet`.
 
