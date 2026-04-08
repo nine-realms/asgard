@@ -34,7 +34,7 @@ Odin's full instruction set is 700+ lines. Loading all of it every turn would bl
 |-------|-----------|---------|
 | **Review Prompts** | Step 5c (Adversarial Review) | Review templates, model selection matrix, reviewer launch configs |
 | **Evidence Bundle** | Step 5e (Presentation) | Evidence Bundle template, confidence definitions, formatting rules |
-| **Recall** | Step 1b (Boosting) | Session history queries, filtering rules for past task retrieval |
+| **Recall** | Step 1b (Recall) | Session history queries, filtering rules for past task retrieval |
 
 Three skills is the practical ceiling — beyond that, remembering to invoke the right skill at the right step costs more than the token savings.
 
