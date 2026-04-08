@@ -15,9 +15,9 @@ Mimir can be spawned by Odin during Step 5c as a specialized reviewer, or invoke
 
 ## Recommended Model
 
-**Default: `claude-sonnet-4.6`** — strong multi-pass reasoning for Mimir's 3-pass architecture, good balance of depth and speed.
+**Standalone / direct invocation: `claude-sonnet-4.6`** — strong multi-pass reasoning for Mimir's 3-pass architecture, good balance of depth and speed.
 
-When spawning Mimir via the `task` tool, set `model: "claude-sonnet-4.6"`:
+When spawning Mimir directly via the `task` tool (not via Odin), set `model: "claude-sonnet-4.6"`:
 ```
 task(
   agent_type: "asgard:mimir",
@@ -26,8 +26,10 @@ task(
 )
 ```
 
+**Odin-spawned model: `gpt-5.4`** — set by `odin-review-prompts/SKILL.md`; overridable per-project via `mimir-model:` in `.github/copilot-instructions.md`. Direct `task()` invocations must set the `model` parameter explicitly — they do not read the instruction-file override.
+
 **Alternatives:**
-- `claude-opus-4.6` — Premium reasoning. Use for 🔴 risk files or complex cross-boundary analysis. Teams can set `mimir-model: claude-opus-4.6` in `.github/copilot-instructions.md` to override the Odin-spawned default (direct `task()` invocations must set the `model` parameter explicitly).
+- `claude-opus-4.6` — Premium reasoning. Use for 🔴 risk files or complex cross-boundary analysis. Teams can set `mimir-model: claude-opus-4.6` in `.github/copilot-instructions.md` to override the Odin-spawned default.
 - `gpt-5.3-codex` — Code-specialized, fast (~30s). Good for quick pre-commit checks.
 - `gpt-5.4-mini` — ~2x faster, slightly less thorough. Good for rapid iteration.
 - `claude-haiku-4.5` — Fastest option. Use when speed matters more than depth.

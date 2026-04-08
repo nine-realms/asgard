@@ -1,6 +1,8 @@
 # Agent Instruction Benchmarks
 
-Stress-test harness for validating how different LLM models process the Odin agent instruction file. Not a unit test — it's a structured simulation that measures instruction comprehension, gate compliance, and failure mode awareness across model families.
+Stress-test harness for validating how different LLM models process agent instruction files. Not a unit test — it's a structured simulation that measures instruction comprehension, gate compliance, and failure mode awareness across model families.
+
+For Mimir-specific benchmarks (review process, CCA integration, panel/standalone modes), see [`mimir/`](mimir/).
 
 ## How to Run
 

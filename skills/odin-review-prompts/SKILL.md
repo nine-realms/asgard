@@ -205,7 +205,7 @@ Maximize model diversity across the review panel. Check Odin's **exact model** f
 | Google (Gemini) | `gpt-5.3-codex` | `claude-sonnet-4.6` | `gpt-5.4` |
 | Unknown / other | `gpt-5.3-codex` | `gpt-5.4` | `claude-opus-4.6` |
 
-**Why Anthropic gets two rows:** When Odin is `claude-opus-4.6`, Loki can't use the same model (self-review). `claude-sonnet-4.6` gives a current-generation Anthropic perspective different from Odin. When Odin is any other Anthropic model, Loki uses `claude-opus-4.6` — the strongest available, different from both Odin and the H/T/L panel.
+**Why Anthropic gets two rows:** When Odin is `claude-opus-4.6`, Loki can't use the same model (self-review). `claude-sonnet-4.6` gives a current-generation Anthropic perspective different from Odin. Note: if Mimir falls back from `gpt-5.4` to `claude-sonnet-4.6` in this scenario, Mimir and Loki share the same model — acceptable in degraded mode. Record the overlap in Mimir's `review-mimir-model-fallback` ledger row (`forced_overlap_with=loki` in `output_snippet`). When Odin is any other Anthropic model, Loki uses `claude-opus-4.6` — the strongest available, different from both Odin and the H/T/L panel.
 
 **Fallback**: If a selected model is unavailable (task fails with a model error), substitute the next model in the same family. Record the substitution as a ledger row: `phase = 'review'`, `check_name = 'review-{name}-model-fallback'`, `tool = '{name}'`, `passed = 1`, and `output_snippet` noting the original model, the substitute model, and any forced overlap. This row is bookkeeping — not a review verdict. No two of the three (Heimdall/Thor/Loki) should use the same model — if forced by availability, note the overlap in `output_snippet`.
 

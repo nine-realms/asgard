@@ -2,6 +2,13 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.1 — Mimir benchmarks + 2 cross-file fixes
+
+- **Mimir benchmark infrastructure**: Added `docs/benchmarks/mimir/` with simulation prompt, scoring rubric, and first results (v0.10.0 baseline: Opus 49, Sonnet 45, GPT-5.4 45, Codex 35, avg 43.5/50). Includes both instruction comprehension (5-question spec test) and comparative review (same diff through different models) benchmark types.
+- **Fix: model contradiction**: Mimir's Recommended Model section now explicitly distinguishes standalone default (`claude-sonnet-4.6`) from Odin-spawned primary (`gpt-5.4`), resolving the contradiction between `mimir.agent.md` and `odin-review-prompts/SKILL.md`.
+- **Fix: Loki/Mimir fallback overlap**: Updated the "Why Anthropic gets two rows" comment to acknowledge that when Odin=`claude-opus-4.6` and Mimir's primary (`gpt-5.4`) fails, both Mimir (fallback) and Loki end up on `claude-sonnet-4.6`. Documented as acceptable in degraded mode with overlap recorded in Mimir's fallback ledger row.
+- **Reverted: HTML file classification**: Original benchmark finding suggested adding `.html`/`.htm` to the documentation/config list. Three independent reviewers (Tyr, Mimir, rubber-duck) convergently identified this as unsafe — Django/Angular templates use plain `.html` and would lose security review. HTML stays in the "code" bucket (everything else) which applies the most comprehensive review prompt.
+
 ## 0.10.0 — Mimir boost + heuristics extraction
 
 - **CCA skill extraction**: Moved all 23 CCA heuristics, specification-aware review, and dynamic analysis from `agents/mimir.agent.md` to `skills/mimir-heuristics/SKILL.md` — companion skill loaded via `skill("mimir-heuristics")` after Pass 2 (between Pass 2 and Pass 3) for cross-cutting analysis on the full diff. Agent file drops from ~632 to ~430 lines.
