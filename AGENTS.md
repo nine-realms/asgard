@@ -18,3 +18,12 @@ Adversarial but constructive code reviewer. Rigorously challenges code changes a
 
 ### `odin-review-prompts`
 Review prompt templates, file-type classification, model selection, and reviewer launch instructions for Odin's Step 5c adversarial review. This is an **operational skill** — a hard dependency loaded on-demand during Step 5c, not on every turn. Contains the 3 review prompt templates (spec/doc/code), Tyr/Mimir/Heimdall/Thor/Loki launch templates, and the cross-family model selection table.
+
+### `odin-evidence-bundle`
+Evidence Bundle presentation template and confidence level definitions for Odin's Step 5e. Hard dependency — if loading fails, HALT.
+
+### `odin-recall`
+Session history query templates and filtering rules for Odin's Step 1b Recall phase. Advisory skill — if loading fails, proceed silently.
+
+### `mimir-heuristics`
+Cross-cutting analysis heuristic library for Mimir's Pass 2 review. Contains CCA-001 through CCA-025, specification-aware review rules, and dynamic analysis guidance. This is a **companion skill** — loaded by Mimir before running cross-cutting analysis, not an Odin operational skill.

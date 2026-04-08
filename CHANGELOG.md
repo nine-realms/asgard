@@ -2,6 +2,22 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.0 — Mimir boost + heuristics extraction
+
+- **CCA skill extraction**: Moved all 23 CCA heuristics, specification-aware review, and dynamic analysis from `agents/mimir.agent.md` to `skills/mimir-heuristics/SKILL.md` — companion skill loaded via `skill("mimir-heuristics")` after Pass 2 (between Pass 2 and Pass 3) for cross-cutting analysis on the full diff. Agent file drops from ~632 to ~430 lines.
+- **New heuristics**: Added CCA-024 (Resource Cleanup in Error Paths) and CCA-025 (Event Handler Race Conditions) to the heuristic library.
+- **Ecosystem detectors**: Added 5 new detectors — Go (unchecked errors, goroutine leaks, defer in loops, type assertion without comma-ok), Rust (unsafe blocks, unwrap chains, missing error propagation), Java/Spring (unclosed resources, null unboxing, bean scope mismatches), React/Next.js (stale closures, missing dep arrays, server/client boundary violations), Shell (unquoted variables, missing set -euo pipefail, cd without error check).
+- **Exploration guidance**: Expanded from a single sentence to structured when/how/budget/never guidance with default max 3 explorations.
+- **Risk-aware review depth**: Added depth calibration table — Mimir adjusts exploration budget, CCA thoroughness, and Pass 2 focus based on `risk_level` metadata or inferred risk from Pass 1.
+- **Model update**: Mimir's Odin-spawned primary model set to `gpt-5.4` for cost-efficient structured review, with `claude-sonnet-4.6` cross-family fallback. Ad-hoc default is `claude-sonnet-4.6`. Teams can override Odin-spawned Mimir via `mimir-model` in `.github/copilot-instructions.md` (e.g., `mimir-model: claude-opus-4.6` for premium reasoning); direct `task()` invocations must set the model parameter explicitly. Loki row 1 cascaded from `claude-sonnet-4.5` to `claude-sonnet-4.6`.
+- **Per-finding confidence**: Added `Confidence: High / Medium / Low` field to Pass 3 finding template with definitions — helps developers triage findings by certainty.
+- **Cross-boundary test gap analysis**: New analysis section checking for untested cross-boundary flows (new endpoints without integration tests, new error paths without caller-side tests). Scoped to Mimir's lane — Tyr handles per-file test coverage conventions.
+- **Panel confidence filter**: In panel mode, surface-level findings now require High confidence — reduces noise from duplicating what other reviewers catch, while cross-cutting findings (Mimir's unique lane) report at all confidence levels.
+- **Recall availability guard**: Added Section 0 to `odin-recall` skill — checks the required Recall query tables (`sessions`, `session_files`, `search_index`) exist in `session_store` before querying. Skips silently if tables are missing instead of producing error noise.
+- **README**: Renamed "Configuring Odin" → "Configuration (Optional)", added "works out of the box" opener.
+- **AGENTS.md**: Added `mimir-heuristics`, `odin-evidence-bundle`, and `odin-recall` skill entries.
+- **copilot-instructions.md**: Added companion skills table distinguishing `mimir-heuristics` from Odin's 3-skill operational ceiling.
+
 ## 0.9.12 — Plan handling + branch reuse fixes
 
 - **Bring-your-own-plan**: Investigation tasks can now invoke Frigg to review a user-provided plan file — previously Investigation skipped Step 3 entirely, making Frigg unreachable for plan review requests.

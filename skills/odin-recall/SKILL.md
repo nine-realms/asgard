@@ -11,6 +11,19 @@ All queries run against `session_store` (read-only). Never write to `session_sto
 
 ---
 
+## 0. Availability Guard
+
+Before running any query below, verify that `session_store` has the required tables. Run this check once per session — if it fails, skip all Recall queries silently and proceed to Step 2.
+
+```sql
+-- database: session_store
+SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sessions', 'session_files', 'search_index') ORDER BY name;
+```
+
+**Expected result**: 3 rows (all table names present). If fewer than 3 rows are returned, `session_store` is not fully populated in this runtime — skip Recall silently. Do not log errors or warn the user; this is a known runtime limitation in some environments.
+
+---
+
 ## 1. Query Templates
 
 ### File-level recall (when target files are known after Step 0)

@@ -90,6 +90,12 @@ Odin's operational skills (`skills/*/SKILL.md`) extract step-specific content fr
 
 **⚠️ Fragmentation limit: 3 operational skills is the practical ceiling.** Beyond this, the cost of remembering to invoke the right skill at the right step exceeds the token savings from a shorter agent file. Cross-model benchmarks (v0.8.0 baseline, avg 43.5/50) showed that file length hurts compliance, but adding more invocation points creates its own compliance risk. Future token optimization should prefer **prose compression** (making existing sections more concise) over **further skill extraction** (creating more files to load).
 
+**Companion skills** (agent-specific, not counted toward Odin's operational ceiling):
+
+| Skill | Agent | Type | Purpose |
+|-------|-------|------|---------|
+| `mimir-heuristics` | Mimir | Companion | CCA heuristic library (CCA-001–025), spec-aware review, dynamic analysis |
+
 ## Testing Changes
 
 After modifying agents:

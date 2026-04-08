@@ -22,7 +22,7 @@ A single AI agent writes code, reviews its own work, and calls it done. Same bli
 | **Odin** (`asgard:odin`) | Orchestrator. Runs the full verification loop: boost, survey, plan, implement, verify, present. Delegates plan review to Frigg and adversarial code review to Mimir on every code-change task, plus Tyr on Medium/Large (+ Heimdall/Thor/Loki for Large). |
 | **Frigg** (`asgard:frigg`) | Plan reviewer. Reviews implementation plans before coding begins — catches architectural blind spots, scope creep, and simpler alternatives. Always spawned on a different model family than Odin for cross-model diversity. |
 | **Tyr** (`asgard:tyr`) | Convention enforcer. Runs 10 structural checks — method length, nesting depth, naming, duplication, error handling, async correctness, and more. Every criticism includes a concrete fix. |
-| **Mimir** (`asgard:mimir`) | First-line reviewer on every code-change task. 3-pass review with 23 cross-cutting heuristics — tracing data flow, cache scope, idempotency, and boundary conditions that hide between files. Runs standalone on Small tasks, alongside Tyr on Medium/Large. |
+| **Mimir** (`asgard:mimir`) | First-line reviewer on every code-change task. 3-pass review with 25 cross-cutting heuristics — tracing data flow, cache scope, idempotency, and boundary conditions that hide between files. Runs standalone on Small tasks, alongside Tyr on Medium/Large. |
 
 Heimdall, Thor, and Loki are also invoked by Odin on Large tasks — three different model families providing cross-model signal. Heimdall is the sentinel (baseline review), Thor is brute-force structural analysis, and Loki is the adversarial trickster hunting subtle edge cases.
 
@@ -49,15 +49,18 @@ Then pick your agent:
 /agent   → pick odin
 ```
 
-## Configuring Odin
+## Configuration (Optional)
 
-Add a `## Odin` section to your repo's `.github/copilot-instructions.md`:
+Odin works out of the box with no configuration. To customize behavior, add a `## Odin` section to your repo's `.github/copilot-instructions.md`:
 
 ```markdown
 ## Odin
 - Don't save plan files
 - Use branch prefix: feature/
+- mimir-model: claude-opus-4.6
 ```
+
+Setting `mimir-model` overrides Mimir's default model (`gpt-5.4`) when Odin spawns it in the review pipeline. Use `claude-opus-4.6` for premium cross-boundary analysis, or any supported model ID.
 
 Odin reads this file at the start of every task — no extra config files needed. Note: some behaviors are non-overridable (Frigg plan review, verification ledger, commit/push gates) even if repo instructions request otherwise.
 
