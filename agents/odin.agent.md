@@ -55,7 +55,7 @@ If only `loop-entry` exists, the full loop (Steps 0→9) is still pending. If `t
 
 ## The Odin Loop
 
-Steps 0–2 produce **minimal output** - use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. The user must always see a plan before implementation (except Investigation tasks, which skip planning and go straight to research). All code-change task sizes (Small/Medium/Large) draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), the Step 0 start signal, and the Step 2b progress signal (Medium/Large) are shown when they occur.
+Steps 0–2 produce **minimal user-facing text** — use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. **"Minimal text" means silent tool execution, not stopping — keep calling tools through Steps 0–2 without waiting for user input. Stop only if a gate requires `ask_user`.** The first normal user-facing pause is the plan presentation (Step 3a) or an earlier `ask_user` gate, whichever comes first. The user must always see a plan before implementation (except Investigation tasks, which skip planning and go straight to research). All code-change task sizes (Small/Medium/Large) draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), the Step 0 start signal, and the Step 2b progress signal (Medium/Large) are shown when they occur. (Steps 3a and 5c have their own progress signals outside this scope.)
 
 ---
 
@@ -81,10 +81,11 @@ If found, incorporate their conventions into the boosted prompt silently.
 
 **Task sizing:** Classify the task using the Task Sizing definitions.
 
-**Start signal (always shown):** Immediately after sizing, emit exactly one line so the user knows the loop is running:
+**Start signal (always shown):** Immediately after sizing, show exactly one user-facing status line:
 ```
 > 🔁 **Odin Loop** — {task_id} | {size} | Starting...
 ```
+**Do not treat the start signal as a stopping point.** Show the status line, then continue immediately with the next step's tool execution. Stop only if an `ask_user` gate triggers. The next normal user-facing pause is the plan presentation (Step 3a) or an earlier `ask_user` gate.
 
 **Ambiguity gate:** After boosting, internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools. Do NOT proceed past this step with unresolved ambiguity — ask now, not during implementation.
 
@@ -201,6 +202,12 @@ Before the user sees the plan, send the draft from Step 3 to **Frigg** for a cro
 | OpenAI (GPT)        | `claude-opus-4.6` |
 | Google (Gemini)     | `claude-opus-4.6` |
 | Unknown / other     | `claude-opus-4.6` |
+
+**Frigg signal (always shown):** Before launching Frigg, show one status line so the user knows the plan is drafted and under review:
+```
+> 🔮 Plan drafted — sending to Frigg ({frigg_model}) for cross-model review...
+```
+Continue immediately to the Frigg launch — this is a progress signal, not a pause point.
 
 ```
 agent_type: "asgard:frigg"
@@ -380,6 +387,12 @@ If Tier 3 is infeasible in the current environment (e.g., iOS library with no si
 **If result is < 2, go back.**
 **Large — verify all 5 required reviewer families ran: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout', 'review-heimdall', 'review-heimdall-timeout', 'review-thor', 'review-thor-timeout', 'review-loki', 'review-loki-timeout');`**
 **If result is < 5, go back.**
+
+**Review signal (always shown):** Before staging and launching reviewers, show one status line so the user knows verification passed and reviews are starting:
+```
+> ⚔️ Code verified — launching {reviewer_list} for adversarial review...
+```
+Where `{reviewer_list}` is: Small → "Mimir", Medium → "Tyr + Mimir", Large → "Tyr + Mimir + Heimdall + Thor + Loki". Continue immediately — this is a progress signal, not a pause point.
 
 Before launching reviewers, stage and capture review inputs once:
 - `git add -A`

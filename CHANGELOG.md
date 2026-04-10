@@ -2,6 +2,13 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.2 — Stall fix + progress signals
+
+- **Fix: start signal stall**: Odin would emit the `🔁 Starting...` line on Medium tasks then stop, waiting for user input. Root cause: "emit exactly one line" was interpreted as a complete turn, and "minimal output" on Steps 0–2 reinforced "nothing more to do." Fixed by reframing to "show one status line" (transient action) and adding explicit anti-stall language: "keep calling tools, don't stop."
+- **Progress signal: Frigg launch (Step 3a)**: New `🔮 Plan drafted — sending to Frigg ({frigg_model}) for cross-model review...` status line before the Frigg subagent launch, eliminating 1–3 minutes of dead air while the plan is under review.
+- **Progress signal: reviewer launch (Step 5c)**: New `⚔️ Code verified — launching {reviewer_list} for adversarial review...` status line before adversarial reviewers launch, eliminating 2–5 minutes of dead air during the review phase.
+- **Preamble clarity**: Exceptions list now notes that Steps 3a and 5c have their own progress signals outside the Steps 0–2 "minimal text" scope.
+
 ## 0.10.1 — Mimir benchmarks + 2 cross-file fixes
 
 - **Mimir benchmark infrastructure**: Added `docs/benchmarks/mimir/` with simulation prompt, scoring rubric, and first results (v0.10.0 baseline: Opus 49, Sonnet 45, GPT-5.4 45, Codex 35, avg 43.5/50). Includes both instruction comprehension (5-question spec test) and comparative review (same diff through different models) benchmark types.
