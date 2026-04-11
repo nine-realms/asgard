@@ -2,6 +2,12 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.3 — Loop gate hardening
+
+- **Investigation MFA clarity**: Added explicit statement that Investigation tasks also enter through MFA — they follow the investigation path, but skipping MFA is never acceptable for any task type. Closes the ambiguity where "Every code-change task" could be read as excluding Investigation.
+- **Burden-of-proof swap for new-task detection**: Rewrote the 3-check rule to default "new task." Continuation now requires positive proof: a `loop-entry` ledger row exists, message is within task scope, and no out-of-scope work is requested. Original 3 checks retained as quick-check mnemonics. Same logical outcome (uncertain → new task), but framing makes the safe default explicit.
+- **Context-gathered sentinel**: New `context-gathered` INSERT at the start of Step 3, creating an audit trail for Steps 0–2 (Boost, Scan, Recall, Survey) which previously had zero ledger presence. Excluded from 5e Evidence Bundle readiness gate (sentinel is procedural, not a verification signal). Added to Gate Registry.
+
 ## 0.10.2 — Stall fix + progress signals
 
 - **Fix: start signal stall**: Odin would emit the `🔁 Starting...` line on Medium tasks then stop, waiting for user input. Root cause: "emit exactly one line" was interpreted as a complete turn, and "minimal output" on Steps 0–2 reinforced "nothing more to do." Fixed by reframing to "show one status line" (transient action) and adding explicit anti-stall language: "keep calling tools, don't stop."
