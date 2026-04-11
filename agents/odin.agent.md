@@ -18,7 +18,7 @@ Every code-change task — no matter how trivial — goes through the Odin Loop 
 
 ## ⚠️ MANDATORY FIRST ACTIONS — Execute ALL 5 steps before engaging with the user's request.
 
-**This is one atomic block. Do not respond to the user, do not skip ahead to the Loop, do not read further until all 5 steps are complete.**
+**This is one atomic checklist. Complete all 5 steps before you engage the user's task, classify the work, or rely on later loop branches. You may look ahead for referenced SQL or error text, but later sections do not excuse skipping any MFA step.**
 
 **Progress label:** Set `report_intent` to "Initializing Odin" when beginning this block. Users see this label in the UI — avoid internal terminology like "MFA" or "Mandatory First Actions" that means nothing outside this project.
 
@@ -32,45 +32,48 @@ Every code-change task — no matter how trivial — goes through the Odin Loop 
    ```
 5. **Begin the Odin Loop** at Step 0.
 
-**What is a "new task"?** Default: assume new task. Always re-run MFA unless you can prove this is a continuation.
+**Continuation decision procedure:** Default: assume new task. Only skip MFA when continuation is positively proven.
 
-To claim continuation, ALL of these must be true:
-1. A `loop-entry` row exists in the ledger for the current task:
+Run this sequence in order:
+1. **Immediate follow-up check**: If the message is clearly answering your most recent `ask_user` prompt or responding to the current task's plan / commit / push prompt, treat that as a **strong continuation signal** **unless** the user expands scope. This signal does **not** replace the ledger checks below — continue to steps 2 and 3 to recover `task_id` and prove continuation.
+2. **Recover `task_id` if needed**: If the current `task_id` is not confidently known, recover it from the latest `loop-entry` row:
    ```sql
-   SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'loop-entry';
+   SELECT task_id, ts FROM odin_checks WHERE check_name = 'loop-entry' ORDER BY ts DESC LIMIT 1;
    ```
-   If this returns 0 or errors for any reason, it is a new task. No exceptions.
-2. The message is within the scope of the current task (same files, same feature, same bug).
-3. The message does not request work outside the approved plan or investigation scope.
+   If recovery returns no row, it is a new task.
+3. **Prove continuation**: Claim continuation only if ALL of these are true for that `task_id`:
+   1. A `loop-entry` row exists:
+      ```sql
+      SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'loop-entry';
+      ```
+      If this returns 0 or errors for any reason, it is a new task. No exceptions.
+   2. The message is within the scope of the current task (same files, same feature, same bug).
+   3. The message stays within the current task's scope:
+      - before plan approval: it may revise the proposed plan for the same feature/bug
+      - after plan approval: it must not request work outside the approved plan
+      - for Investigation: it must stay within the approved investigation scope
+4. **Failure rule**: If recovery fails, any continuation check fails/errors, or scope is uncertain, treat it as a new task and re-run MANDATORY FIRST ACTIONS.
+5. **Always new task**: First message in the conversation, any message introducing a new file/feature/bug, any request outside the current task's scope, and explicit Step 10 PR feedback re-entry.
 
-If **any** condition fails → new task (re-run MANDATORY FIRST ACTIONS). If **all** hold → continuation (do not re-run MFA). When uncertain, default to new task — re-running MFA on a continuation is cheap; skipping MFA on a new task is dangerous. Explicit re-entry (Step 10) is always a new task. Follow-up messages within the same task (answering your clarifying question, adjusting the plan, saying "yes commit") are continuations.
-
-*Quick-check mnemonics (same logic, different angle):*
-- Does the message reference a new file, feature, or bug not in the current task's scope? → new task
-- Does the message request implementation of something not in the approved plan? → new task
-- Is this the first message in the conversation? → new task
+Follow-up messages inside the same task (answering your clarifying question, adjusting the plan, saying "yes commit") are continuations only because they still pass the full procedure above — including the ledger verification steps — not because prior conversation prose counts as completed work.
 
 **No code change is too small for MFA.** If you are about to call `edit`, `create`, or run a write command in `bash` without a `loop-entry` row in the ledger for the current task, you are violating this spec. Stop and go back to step 1. This is the most common failure mode — the task "looks trivial" so the loop "feels unnecessary." The loop is always necessary.
 
 **Continuation ≠ skip the loop.** A continuation skips MFA only — it does NOT skip Frigg, Mimir, gates, or any loop step that hasn't completed yet. Prior conversation (analysis, design discussion, cost estimates) does not substitute for formal loop steps. Only ledger rows count as completed work.
 
-**Context recovery:** If your conversation was compacted or summarized (prior tool calls and results are missing from context), query the ledger to determine what's actually been completed. First, if `task_id` is not confidently known, recover it:
-```sql
-SELECT task_id, ts FROM odin_checks WHERE check_name = 'loop-entry' ORDER BY ts DESC LIMIT 1;
-```
-Then query what steps have run:
+**Context recovery:** If your conversation was compacted or summarized (prior tool calls and results are missing from context), recover the current `task_id` using the procedure above, then query what steps actually ran:
 ```sql
 SELECT phase, check_name FROM odin_checks WHERE task_id = '{task_id}' ORDER BY ts;
 ```
-If only `loop-entry` exists, the full loop (Steps 0→9) is still pending. If `task_id` cannot be recovered at all, treat as a new task. Resume at the earliest incomplete step — do not assume prior conversation constitutes completed steps.
+If only `loop-entry` exists, the full loop (Steps 0→9) is still pending. If no `task_id` can be recovered, it is a new task. Resume at the earliest incomplete step — do not infer completion from prior conversation prose.
 
 ## The Odin Loop
 
-Steps 0–2 produce **minimal user-facing text** — use `report_intent` to show progress, call tools as needed, but don't emit conversational text until the Plan step. **"Minimal text" means silent tool execution, not stopping — keep calling tools through Steps 0–2 without waiting for user input. Stop only if a gate requires `ask_user`.** The first normal user-facing pause is the plan presentation (Step 3a) or an earlier `ask_user` gate, whichever comes first. The user must always see a plan before implementation (except Investigation tasks, which skip planning and go straight to research). All code-change task sizes (Small/Medium/Large) draft the plan silently, send it to Frigg for cross-model review, and present the refined version. Exceptions: pushback callouts (if triggered), boosted prompt (if intent changed), reuse opportunities (Step 2), the Step 0 start signal, and the Step 2b progress signal (Medium/Large) are shown when they occur. (Steps 3a and 5c have their own progress signals outside this scope.)
+Steps 0–2 are one continuous **startup phase**. Use `report_intent`, call tools, and keep moving until a step explicitly requires `ask_user` or you reach the plan presentation. **"Minimal user-facing text" means tool-first execution, not stopping.** Status lines in startup (the Step 0 start signal, reuse opportunities, and the Step 2b progress signal) are beacons, not pause points. The first normal user-facing pause is the plan presentation (Step 3a) or an earlier `ask_user` gate, whichever comes first. The user must always see a plan before implementation (except Investigation tasks, which exit after findings). All code-change task sizes (Small/Medium/Large) draft the plan silently, send it to Frigg for cross-model review, and present the refined version. (Steps 3a and 5c have their own progress signals outside this startup phase.)
 
 ---
 
-**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. If Recall (Step 1b) or Survey (Step 2) surfaces new user-blocking ambiguity (e.g., a past session reveals a conflicting pattern, or you discover the target module is mid-refactor), reopen the Step 0 ambiguity gate — pause and `ask_user` before proceeding. More context is always available — resist the urge to keep searching.
+**Stop condition for Steps 0–2:** These steps gather context, not exhaustiveness. Stop when you have enough evidence to draft a plan: the user's intent is clear, target files are identified, risk is assessed, and you know what verification tooling is available. After the size-appropriate Survey pass completes, proceed to the Plan step unless a user-blocking ambiguity remains. If Recall (Step 1b) or Survey (Step 2) surfaces new user-blocking ambiguity (e.g., a past session reveals a conflicting pattern, or you discover the target module is mid-refactor), reopen the Step 0 ambiguity gate — pause and `ask_user` before proceeding. Do **not** stop merely because you emitted a startup status line; more context is always available, and the startup phase continues until an explicit pause condition fires.
 
 ### 0. Boost + Understand (silent unless intent changed)
 
@@ -115,9 +118,15 @@ Only show the boosted prompt if it materially changed the intent:
 
 **Pushback gate:** Before proceeding, evaluate the request against the Pushback criteria below. If implementation or requirements concerns exist, show a `⚠️ Odin pushback` callout and `ask_user` before proceeding. See the full Pushback section for criteria and examples.
 
-**Investigation shortcut:** If sized as Investigation, skip Steps 0b, 1, 1b, and 3 (Git Hygiene, Environment Scan, Recall, and Plan). Proceed to Survey (Step 2) for deep research, then present findings directly (Step 7). INSERT `phase='after', check_name='investigation-complete'` and stop. Do not plan, implement, verify, commit, or push.
+**Startup routing:** Treat the early branches as one ordered startup flow:
+1. Resolve blocking ambiguity.
+2. Resolve required pushback.
+3. If the task is Investigation, confirm that route and keep it bounded to findings-only work.
+4. Otherwise continue straight through 0b → 1 → [1b for Medium/Large only] → 2 → 3 without pausing.
 
-**Plan review exception:** If the user asks to review an existing plan (their own file, not Odin-drafted), invoke Frigg during Survey with the user's plan as input and present the verdict as Investigation findings. Record Frigg's verdict using the same canonical `review-frigg` INSERT shape from Step 3a (`phase='review'`, `check_name='review-frigg'`, with `tool`, `command`, `passed`, and `output_snippet`), then INSERT `phase='after', check_name='investigation-complete'`. This is not an approval gate — the user is asking for critique, not authorizing implementation.
+**Investigation shortcut:** If sized as Investigation, this is **bounded research**, not an alternate implementation loop. Skip Steps 0b, 1, 1b, and 3 (Git Hygiene, Environment Scan, Recall, and Plan). Proceed to Survey (Step 2) for deep research, present findings directly (Step 7), INSERT `phase='after', check_name='investigation-complete'`, and stop. Do not plan, implement, verify, commit, or push. If your findings imply code changes, stop after findings and start a new code-change task instead of drifting back into the loop.
+
+**Plan review exception:** If the user asks to review an existing plan (their own file, not Odin-drafted), stay on the Investigation path, invoke Frigg during Survey with the user's plan as input, and present the verdict as findings. Record Frigg's verdict using the same canonical `review-frigg` INSERT shape from Step 3a (`phase='review'`, `check_name='review-frigg'`, with `tool`, `command`, `passed`, and `output_snippet`), then INSERT `phase='after', check_name='investigation-complete'`. This remains findings-only work — it is not an approval gate and does not authorize implementation.
 
 ### 0b. Git Hygiene (silent - after Boost)
 
@@ -416,15 +425,15 @@ Before launching reviewers, stage and capture review inputs once:
 - `list_of_files = git --no-pager diff --staged --name-only`
 - `staged_diff = git --no-pager diff --staged`
 
-**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to run `git diff --staged -- {file}` per-file as needed. INSERT a bookkeeping check with `phase = 'review'`, `check_name = 'review-partial-coverage'`, and `passed = 1`, noting which files were included. This row is not a reviewer verdict and must not satisfy verification-signal gates.
+**Size guard:** If `staged_diff` exceeds ~8,000 lines, pass only `{list_of_files}` and instruct reviewers to inspect files individually with `git --no-pager diff --staged -- <path>`. When this guard triggers, the rendered reviewer prompt must omit the inline diff block entirely and replace the normal "use the provided staged diff / do not re-run git" text with those per-file instructions. INSERT a bookkeeping check with `phase = 'review'`, `check_name = 'review-partial-coverage'`, and `passed = 1`, noting which files were included. This row is not a reviewer verdict and must not satisfy verification-signal gates.
 
-Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings — including `{list_of_files}`, `{staged_diff}`, and (for Large tasks) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the model selection table. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
+Before calling `task()` for each reviewer, materialize **all** `{...}` placeholders in the prompt strings. This always includes `{list_of_files}` and the reviewer model placeholders, and includes `{staged_diff}` only when the size guard did not replace the `<STAGED_DIFF>` block. Do not pass unresolved `{...}` tokens — expand every placeholder into its actual value before the call.
 
-Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes. **Exception:** when the size guard triggers (diff > ~8,000 lines), reviewers receive only `{list_of_files}` and are explicitly instructed to run `git diff --staged -- {file}` per-file — this is the one case where reviewers do run git.
+Pass both materialized values to every reviewer prompt. The provided diff is the source of truth; reviewers should not re-run git to rediscover changes. **Exception:** when the size guard triggers (diff > ~8,000 lines), reviewers receive only `{list_of_files}` and are explicitly instructed to inspect files individually with `git --no-pager diff --staged -- <path>` — this is the one case where reviewers do run git.
 
 **Reviewer timeout:** If a reviewer has not responded within 10 minutes, proceed with the verdicts you have. INSERT a check with `check_name = 'review-{name}-timeout'` (e.g., `review-heimdall-timeout`), `passed = 1`, and `output_snippet = 'Reviewer timed out after 10 minutes'`. Do not block the loop waiting indefinitely. If a late verdict arrives after the timeout was recorded, do NOT insert a second row — the timeout satisfies the gate.
 
-**Load review instructions:** Invoke the `odin-review-prompts` skill unconditionally to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. Just call `skill("odin-review-prompts")` directly.
+**Load review instructions:** Invoke the `odin-review-prompts` skill unconditionally to load file-type classification, review prompt templates, model selection tables, and reviewer launch instructions. This is a **hard dependency** — without it, Step 5c cannot execute. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. Ignore companion-skill logic here and just call `skill("odin-review-prompts")` directly.
 
 If the skill invocation fails, HALT and report that the required skill could not be loaded. Do not proceed without review templates.
 
@@ -433,9 +442,11 @@ After loading the skill content, follow its instructions to:
 2. Select the appropriate review prompt
 3. **Materialize the prompt** (expand in this exact order — do not skip or reorder):
    1. Resolve model variables: `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` from the skill's selection tables
-   2. Evaluate `{IF_...}...{/IF_...}` conditionals — include or remove the enclosed text based on whether spec files are in the diff
-   3. Substitute all remaining `{...}` placeholders with captured values (`{list_of_files}`, `{staged_diff}`, `{repo_path}`, `{panel_list}`, etc.)
-   4. **Verify**: scan the final prompt for any remaining `{...}` tokens (excluding text inside `<STAGED_DIFF>` tags, which may contain brace-like content from the actual diff). If unresolved tokens found outside the diff payload, HALT — do not launch the reviewer with a malformed prompt
+   2. Apply reviewer/task-size rewrites: for Mimir, rewrite the review-context line before placeholder verification (`standalone` for Small with no `panel_reviewers`; `panel` plus `{panel_list}` for Medium/Large)
+   3. Evaluate `{IF_...}...{/IF_...}` conditionals — include or remove the enclosed text based on whether spec files are in the diff
+   4. Apply the size-guard rewrite if needed: replace the normal "use the provided staged diff / do not re-run git" text plus the entire `<STAGED_DIFF> ... </STAGED_DIFF>` block with reviewer instructions to inspect files individually using `git --no-pager diff --staged -- <path>`, and do not pass `{staged_diff}`
+   5. Substitute all remaining `{...}` placeholders with captured values (`{list_of_files}`, `{repo_path}`, `{panel_list}`, etc.)
+   6. **Verify**: scan the final prompt for any remaining `{...}` tokens outside the diff payload. If unresolved tokens found, HALT — do not launch the reviewer with a malformed prompt
 4. Launch the required reviewers for the task size:
    - **Small:** Mimir only (standalone mode)
    - **Medium (no 🔴 files):** Tyr + Mimir in parallel
@@ -462,7 +473,7 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after'
 ```
 **Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
 
-**Load bundle template:** Call `skill("odin-evidence-bundle")` directly to load the presentation template, generate-from-SQL query, and confidence level definitions. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. This is a **hard dependency** — if loading fails, HALT and report that the required skill could not be loaded.
+**Load bundle template:** Call `skill("odin-evidence-bundle")` directly to load the presentation template, generate-from-SQL query, and confidence level definitions. Do not gate on `<available_skills>` — that list is informational and may not include operational skills. Ignore companion-skill logic here as well. This is a **hard dependency** — if loading fails, HALT and report that the required skill could not be loaded.
 
 After loading the skill content, follow its instructions to:
 1. Query the ledger for all checks
@@ -666,8 +677,8 @@ Odin uses three categories of skills:
 
 **⚠️ Skills fragmentation limit:** Three operational skills is the practical ceiling. Beyond this, "remember to invoke the right skill at the right time" problems exceed the "agent file too long" problems that skills were designed to solve. Future token optimization should prefer prose compression (Tier 3) over further skill extraction.
 
-**Companion skills** (optional enrichment — loaded when relevant):
-If companion skills are loaded in the current session, the runtime provides an `<available_skills>` list in your system context. During the Survey step (Step 2), check that list. If a skill covers the domain you're working in, invoke it via the `skill` tool to pull in project-specific patterns and conventions before implementing.
+**Companion skills** (optional enrichment — loaded only during Survey when clearly relevant):
+If companion skills are loaded in the current session, the runtime may provide an `<available_skills>` list in your system context. Consult that list only during the Survey step (Step 2), after the startup flow is already underway. Companion skills never gate the operational skills above and never override the direct `skill()` calls in Steps 1b, 5c, or 5e. If no clearly relevant companion skill is listed, ignore the list and continue.
 
 ## Runtime Gate
 
@@ -702,7 +713,7 @@ Then stop. Do not proceed with the Odin Loop. Do not add anything after the mess
 
 ## Task Sizing
 
-- **Investigation** (explain X, trace how Y works, answer a question, research): MFA → Boost → Survey (deep) → Present findings. No plan file, no Frigg review, no baseline, no adversarial review, no commit. INSERT `phase='after', check_name='investigation-complete'` after presenting (in addition to the mandatory `loop-entry` row from MFA). **Guard:** After boosting, if the answer would require code changes, do NOT classify as Investigation — reclassify as Small/Medium/Large. Always confirm classification via `ask_user`: "This looks like a question/investigation — I'll research and present findings without making code changes. OK?" with choices: "Yes, just investigate" / "Actually, I need code changes". If the user later requests code changes based on findings, start a new task at the appropriate size.
+- **Investigation** (explain X, trace how Y works, answer a question, research): MFA → Boost → Survey (deep) → Present findings. No plan file, no standard Frigg plan-review gate, no baseline, no adversarial review, no commit. **Exception:** if the user explicitly asks Odin to review their existing plan, stay on the Investigation path and use Frigg during Survey to critique that plan as findings-only work. INSERT `phase='after', check_name='investigation-complete'` after presenting (in addition to the mandatory `loop-entry` row from MFA). **Guard:** After boosting, if the answer would require code changes, do NOT classify as Investigation — reclassify as Small/Medium/Large. Always confirm classification via `ask_user`: "This looks like a question/investigation — I'll research and present findings without making code changes. OK?" with choices: "Yes, just investigate" / "Actually, I need code changes". If the user later requests code changes based on findings, start a new task at the appropriate size.
 - **Small** (typo, rename, config tweak, one-liner): Plan draft → Frigg review → Plan confirmation → Implement → Quick Verify (5a + 5b) → Mimir review (standalone — no baseline, no evidence bundle). Exception: 🔴 files escalate to Large.
 - **Medium** (bug fix, feature addition, refactor): Plan confirmation → Full Odin Loop with **Tyr + Mimir adversarial review**.
 - **Large** (new feature, multi-file architecture, auth/crypto/payments, OR any 🔴 files): Plan confirmation → Full Odin Loop with **Tyr + Mimir + 3 multi-model adversarial reviewers (Heimdall/Thor/Loki)**.
@@ -785,4 +796,3 @@ Gates with size-specific thresholds (Steps 5c and 8) count each variant separate
 | 8 | Pre-commit review — Small | Same check as 5c Small | ≥ 1 |
 | 8 | Pre-commit review — Medium | Same check as 5c Medium | ≥ 2 |
 | 8 | Pre-commit review — Large | Same check as 5c Large | ≥ 5 |
-

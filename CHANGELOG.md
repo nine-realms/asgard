@@ -2,6 +2,14 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.4 — Startup flow simplification
+
+- **MFA wording made processable**: Replaced the literal "do not read further" instruction with a checklist-style rule that still preserves MFA ordering but no longer asks the model to pretend it cannot inspect later sections for referenced SQL or error text.
+- **Continuation logic compacted**: Reworked new-task detection into a single continuation decision procedure covering immediate follow-ups, `task_id` recovery, proof-of-continuation checks, and explicit always-new-task cases. Removes the duplicated mnemonic layer, reduces task-identity circularity under compaction, and keeps ledger verification mandatory even for obvious follow-up replies.
+- **Startup flow flattened**: Reframed Steps 0–2 as one continuous startup phase, clarified that startup status lines are beacons rather than pause points, and added explicit startup routing so ambiguity, pushback, Investigation, and the normal code-change path read as branches of one flow instead of separate modes.
+- **Investigation path bounded**: Tightened the Investigation shortcut and plan-review exception so they stay findings-only work. If findings imply code changes, Odin now stops and starts a fresh code-change task instead of drifting back into the main loop.
+- **Skill-contract clarification**: Clarified that companion-skill discovery is Survey-only optional enrichment and never gates operational skills. Step 5c/5e now explicitly ignore companion-skill logic, and `odin-review-prompts` now documents the full 6-phase render contract including reviewer-context rewrites, oversized-diff handling, and the final unresolved-placeholder verification step.
+
 ## 0.10.3 — Loop gate hardening
 
 - **Investigation MFA clarity**: Added explicit statement that Investigation tasks also enter through MFA — they follow the investigation path, but skipping MFA is never acceptable for any task type. Closes the ambiguity where "Every code-change task" could be read as excluding Investigation.
