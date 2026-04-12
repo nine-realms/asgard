@@ -28,6 +28,24 @@ prompt: "<paste full contents of simulation-prompt.md here>"
 - `claude-opus-4.6` (Anthropic — flagship, optional — expensive)
 - Google Gemini (when available in runtime — not yet supported as of 2026-04-04)
 
+## Three-Arm Eval (compression-aware)
+
+To separate "spec got better" from "model was just terse," run a three-arm panel:
+
+1. **Baseline** — normal benchmark prompt on baseline spec (usually `main`)
+2. **Terse control** — same baseline spec, but with a concise-response overlay
+3. **Candidate** — candidate spec change, with the same concise-response overlay
+
+Protocol + prompt overlays live in [`three-arm/README.md`](three-arm/README.md).
+Comparison helper:
+
+```bash
+python3 docs/benchmarks/three-arm/compare.py \
+  --baseline docs/benchmarks/results/<baseline-file>.md \
+  --terse-control docs/benchmarks/results/<terse-control-file>.md \
+  --candidate docs/benchmarks/results/<candidate-file>.md
+```
+
 ## Scoring
 
 See `scoring-rubric.md` for the 5-dimension rubric. Each dimension is scored 1-10. Total possible: 50.

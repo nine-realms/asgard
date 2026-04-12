@@ -2,6 +2,37 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.8 — Prose compression + MFA done signal
+
+- **MFA block compressed from 58→38 lines**: Hybrid-compact CREATE TABLE (scannable but shorter), tighter continuation prose, removed redundant progress-label paragraph. All logic preserved.
+- **Explicit "MFA complete" boundary**: Added a clear done-signal after step 5 with routing — new tasks enter Step 0, continuations emit resume signal. Moves continuation start signal OUT of step 3 (was firing inside MFA before steps 4–5 completed).
+- **First-batch instruction front-loaded**: Rewritten from "Your first tool-call batch on every message must contain..." (buried 14 words in) to "First batch = ... Nothing else" (constraint-first).
+- **Deduplicated Verification Ledger**: Removed the 15-line duplicate CREATE TABLE from the Verification Ledger section — references MFA step 2 instead.
+- **Step 8 gate deduplication**: Pre-commit review gate now references Step 5c's gate query instead of repeating all three size-specific SQL queries.
+- **Centralized skill invocation rules**: Moved the "do not gate on available_skills / call directly" boilerplate from Steps 1b, 5c, and 5e into Skills Awareness section. Step-local instructions now reference the central rule.
+- **Interactive Input Rule compressed**: Merged two separate example blocks into one compact block. Both failure modes (secret piping, confirmation pre-answering) preserved.
+- **General prose compression**: Step 0 instruction scan, non-overridable behaviors, startup routing, Step 1 caching, Step 3a Frigg rerun, Step 3b cleanup — all tightened without logic changes. Total: 810→710 lines (−100 lines, −12%).
+
+## 0.10.7 — Continuation reliability + MFA forward-reference elimination
+
+- **Objective completed-task detection in MFA step 3**: Before fuzzy scope checks, step 3 now queries for terminal ledger rows (`task-complete` or `investigation-complete`). If the prior task already finished, it routes to new task immediately — no judgment call needed for the most common misclassification case.
+- **Terminal `task-complete` row in Step 8**: Successful commits now INSERT a `task-complete` row, giving MFA step 3 an objective signal that the prior code-change task is done. Investigation tasks already had `investigation-complete`.
+- **Continuation start signal**: Continuation paths now emit `> 🔁 **Odin Loop** — {task_id} | Resuming at Step {N}…` so the user always sees loop state, matching the new-task start signal from Step 0.
+- **Inline CREATE TABLE in MFA step 2**: The ledger schema is now inlined directly in MFA instead of referencing the Verification Ledger section 400+ lines away. Eliminates the forward-reference compliance risk.
+- **Parallel-call clarity for first tool batch**: Rewrote the MFA opening instruction to explicitly say `report_intent` and `SELECT 1` go in the same tool-call batch, removing the "after setting" sequencing ambiguity.
+
+## 0.10.6 — MFA anchor + three-arm benchmark protocol
+
+- **MFA now leads the file with a hard runtime anchor**: Moved MANDATORY FIRST ACTIONS above identity prose so the critical path appears first in model attention order. Added explicit rule that after setting `report_intent`, the first runtime tool call must be `SELECT 1` on the `session` database.
+- **MFA step-3 decision path compressed**: Flattened continuation vs new-task logic into one ordered branch: run lookup, apply immediate carve-outs, then evaluate two continuation checks. Keeps behavior the same while reducing nested prose in the highest-risk startup step.
+- **Three-arm eval support added for Odin benchmarks**: Added `docs/benchmarks/three-arm/README.md` and `docs/benchmarks/three-arm/compare.py` so benchmark runs can separate generic terseness effects from real spec improvements (Baseline vs Terse Control vs Candidate), with automatic delta tables from result markdown files.
+
+## 0.10.5 — Unified MFA entry point
+
+- **Continuation logic absorbed into MFA step 3**: Eliminated the standalone continuation decision procedure (~24 lines) that competed with the 5 MFA steps for model attention. The continuation check is now MFA step 3 — a single ledger query that decides continuation vs. new task. Steps 4–5 (task_id generation, loop-entry INSERT) run only for new tasks. Steps 1–2 (runtime gate, ledger creation) always run — they're idempotent. Every message now has one entry point, not a pre-MFA decision tree plus the MFA block.
+- **Context recovery embedded**: The context recovery procedure (query completed steps after compaction) is now part of the continuation path in step 3, not a separate block. "Do not infer completion from conversation prose" survives as an inline rule.
+- **Hard new-task carve-outs preserved**: First message, Step 10 PR feedback re-entry, and out-of-scope requests remain explicitly marked as always-new-task.
+
 ## 0.10.4 — Startup flow simplification
 
 - **MFA wording made processable**: Replaced the literal "do not read further" instruction with a checklist-style rule that still preserves MFA ordering but no longer asks the model to pretend it cannot inspect later sections for referenced SQL or error text.

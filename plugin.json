@@ -1,6 +1,6 @@
 {
   "name": "asgard",
-  "version": "0.10.4",
+  "version": "0.10.8",
   "description": "Odin agent ecosystem — adversarial code review agents for GitHub Copilot CLI",
   "author": {
     "name": "Agents of Asgard"
