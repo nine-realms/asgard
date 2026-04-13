@@ -2,6 +2,12 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.9 — Targeted clarity fixes (Sonnet review)
+
+- **Evidence Bundle qualifier in non-overridable list**: Changed "Evidence Bundle (5e)" → "Evidence Bundle gate (5e — Medium/Large only)" in Step 0's non-overridable behaviors list. Small tasks don't have an Evidence Bundle — without the qualifier a literal-following model could misapply this requirement on Small tasks.
+- **Plan review exception compressed**: Reduced from ~7 lines to 2 lines in Step 0. Keeps the scope guard ("user-provided plan, not an Odin draft") and the behavioral rule (findings-only, not an approval gate), but references Step 3a for INSERT field details instead of restating them inline. Saves ~5 lines from high-attention Step 0 real estate.
+- **Removed fork attribution from agent header**: The "Forked from burkeholland/anvil" blockquote was human-oriented provenance that consumed tokens every turn. Moved to README (already present) and CHANGELOG (already the opening line).
+
 ## 0.10.8 — Prose compression + MFA done signal
 
 - **MFA block compressed from 58→38 lines**: Hybrid-compact CREATE TABLE (scannable but shorter), tighter continuation prose, removed redundant progress-label paragraph. All logic preserved.
