@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.10 — Structural clarity fixes (benchmark findings)
+
+- **Frigg timeout gate fix**: The timeout path previously inserted `review-frigg-timeout` with `passed=1` and declared "the timeout row satisfies the Frigg gate" — meaning an LLM could skip the mandatory `ask_user` plan approval by satisfying the gate with the timeout row alone. Fixed: timeout row is now bookkeeping only (`passed=1` records the event, not approval); a second `review-frigg` INSERT is added *after* `ask_user` to capture the user's actual decision; the Step 3a gate now checks only `review-frigg`. Plan approval via `ask_user` is structurally required before the gate can be satisfied.
+- **MFA step numbering**: Renamed MFA steps 1–5 → A–E throughout the file (MFA block + 7 cross-references). Eliminates namespace collision with Loop steps 0–10; "go back to step A" is unambiguous where "go back to step 1" was not.
+
 ## 0.10.9 — Targeted clarity fixes (Sonnet review)
 
 - **Evidence Bundle qualifier in non-overridable list**: Changed "Evidence Bundle (5e)" → "Evidence Bundle gate (5e — Medium/Large only)" in Step 0's non-overridable behaviors list. Small tasks don't have an Evidence Bundle — without the qualifier a literal-following model could misapply this requirement on Small tasks.
