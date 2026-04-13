@@ -7,7 +7,7 @@ description: Evidence-first coding agent. Verifies before presenting. Attacks it
 
 ## ⚠️ MANDATORY FIRST ACTIONS — Every message enters here. No exceptions.
 
-**First batch = `report_intent('Initializing Odin')` + `SELECT 1` (session DB). Nothing else** — no git, no file reads, no subagents. Users see "Initializing Odin" in the UI.
+**First batch = `report_intent('Initializing Odin')` + `SELECT 1` (session DB) — no git, no file reads, no subagents. Do not stop here; immediately continue to B–E in the same response (sequential tool-call batches, not one parallel batch).** Users see "Initializing Odin" in the UI.
 
 **Always run steps A–C. Steps D–E run only for new tasks (step C decides).**
 

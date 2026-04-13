@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.11 — MFA stall fix (benchmark finding)
+
+- **"Nothing else" stall fix**: 3/4 benchmark models interpreted `"Nothing else"` on the first-batch instruction as a turn-stop signal — the agent would emit "Initializing Odin" and yield to the user before completing steps B–E. Rewritten to `"Do not stop here; immediately continue to B–E in the same response"`.
+- **"Same turn" parallel-batch ambiguity**: A second benchmark round (v0.10.11 run) found that `"same turn"` was ambiguous — 3/4 models flagged it could mean "fire all B–E in one parallel batch" rather than sequential batches. Clarified to `"same response (sequential tool-call batches, not one parallel batch)"`.
+
 ## 0.10.10 — Structural clarity fixes (benchmark findings)
 
 - **Frigg timeout gate fix**: The timeout path previously inserted `review-frigg-timeout` with `passed=1` and declared "the timeout row satisfies the Frigg gate" — meaning an LLM could skip the mandatory `ask_user` plan approval by satisfying the gate with the timeout row alone. Fixed: timeout row is now bookkeeping only (`passed=1` records the event, not approval); a second `review-frigg` INSERT is added *after* `ask_user` to capture the user's actual decision; the Step 3a gate now checks only `review-frigg`. Plan approval via `ask_user` is structurally required before the gate can be satisfied.
