@@ -2,6 +2,16 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.12 — MFA→Loop section boundary fix (benchmark finding)
+
+- **Root cause (Sonnet + Opus independently)**: `"MFA complete. New tasks → begin the Odin Loop at Step 0."` was a prose navigation sentence with a section break (identity text + `## The Odin Loop` header) before the Step 0 gate — a natural LLM stop point. Models completed the MFA procedural block and yielded before executing Step 0.
+- **Fix**: MFA now ends with a `🚫 Verify and proceed immediately` gate block containing the loop-entry SELECT. The gate's success path says `"immediately begin Step 0 — next tool call is the instruction scan"` — a forward imperative, not navigation.
+- **Step 0**: Removed the redundant loop-entry gate SQL block (now covered by MFA). Added a one-line precondition note documenting the dependency on MFA.
+- **Startup phase intro (line ~55)**: Compressed from 5 sentences to 2 — removed redundant "not stopping / not pausing" prose that was a symptom of the structural gap, not a cure.
+- **Start signal warning (line ~79)**: Compressed from 4 sentences to 2 for same reason.
+- **Line 10**: Reframed `"Do not stop here; immediately continue to B–E in the same response (sequential tool-call batches, not one parallel batch)"` → `"Steps B–E follow immediately in this turn, each as its own tool-call batch."` Positive statement, clearer "this turn" wording.
+- **Gate Registry**: `loop-entry` gate moved from `Step 0` → `MFA`.
+
 ## 0.10.11 — MFA stall fix + SELECT 1 duplication fix (benchmark findings)
 
 - **SELECT 1 duplication fix**: Arm C benchmark found Sonnet (-1) read the `SELECT 1` in the first-batch description and the `SELECT 1` in Step A's Runtime Gate as a double-execute. Fixed by making the first-batch description say "Step A (`SELECT 1`, session DB)" and Step A's body say "The `SELECT 1` from the first batch above". Arm C2 confirms the complaint is gone; score held at 43.5 avg (neutral — no regression).
