@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.15 — Continuation task_id hardening + distinct Evidence Bundle readiness (benchmark findings)
+
+- **Continuation task_id hardening (Sonnet/Opus — v0.10.14 standard benchmark)**: MFA step C could read the most recent `loop-entry` row, set `{task_id}`, then route to **new task** with that stale value still in scope. This left room for models to satisfy later gates against the prior task's ledger rows. Hardened the new-task exits in step C to explicitly discard the carried-forward `{task_id}` and clarified in step D + Verification Ledger that only true continuations reuse MFA step C's value; every new-task path must generate a fresh slug in step D.
+- **Evidence Bundle readiness counts distinct real checks (Opus/Tyr — v0.10.14 standard benchmark + review)**: Step 5e previously used `COUNT(*)` over eligible `phase='after'` rows, so duplicate verification inserts for the same check could inflate readiness. Tightened the gate to `COUNT(DISTINCT check_name)` and excluded `tier3-infeasible` bookkeeping rows, so readiness now requires distinct verification signals, not raw row count or infeasibility markers.
+
 ## 0.10.14 — Loop gate + MFA batch clarity + SKILL.md spec detection (benchmark findings)
 
 - **Loop-entry gate at section level (Opus Q5 — v0.10.13 standard benchmark)**: Multiple models independently found that LLMs pattern-match `## The Odin Loop` as the entry point and skip MFA. The existing precondition was buried in prose inside Step 0. Added a formal `🚫 GATE` block at the top of `## The Odin Loop` (before Step 0) with the loop-entry SQL query and explicit "return to MFA step A" instruction for any failure including query errors.

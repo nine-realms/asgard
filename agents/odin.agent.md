@@ -31,9 +31,9 @@ C. **Continuation or new task?** Default: new task. Query:
    ```sql
    SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name IN ('task-complete', 'investigation-complete');
    ```
-   Count > 0 → prior task finished → **new task**, go to step D.
-   Count = 0 → evaluate: (a) message stays in scope (same files/feature/bug), (b) no new file/feature/bug introduced. Both pass → **continuation**: skip steps D–E, query `SELECT phase, check_name FROM odin_checks WHERE task_id = '{task_id}' ORDER BY ts;` and resume at earliest incomplete step. Either fails → **new task**.
-D. **Generate `task_id`**: Slug from description (e.g., `fix-login-crash`). **Step 10 exception**: derive as `{original_task_id}-pr-feedback`.
+   Count > 0 → prior task finished → **new task**, go to step D. Discard the `{task_id}` read above — it identifies the finished prior task, not this new one.
+   Count = 0 → evaluate: (a) message stays in scope (same files/feature/bug), (b) no new file/feature/bug introduced. Both pass → **continuation**: skip steps D–E, query `SELECT phase, check_name FROM odin_checks WHERE task_id = '{task_id}' ORDER BY ts;` and resume at earliest incomplete step. Either fails → **new task**. Discard the `{task_id}` read above before going to step D — only true continuations reuse it.
+D. **Generate `task_id`**: Slug from description (e.g., `fix-login-crash`). Every new-task path generates a fresh slug here — never carry forward the row read in step C. **Step 10 exception**: derive as `{original_task_id}-pr-feedback`.
 E. **Record + verify loop entry** (new tasks only):
    ```sql
    INSERT INTO odin_checks (task_id, phase, check_name, tool, command, passed)
@@ -419,9 +419,9 @@ INSERT each check into `odin_checks` with `phase = 'after'`, `check_name = 'read
 **🚫 GATE: Do NOT present the Evidence Bundle until:**
 ```sql
 -- database: session
-SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%' AND check_name NOT IN ('loop-entry', 'investigation-complete', 'context-gathered');
+SELECT COUNT(DISTINCT check_name) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%' AND check_name NOT IN ('loop-entry', 'investigation-complete', 'context-gathered', 'tier3-infeasible');
 ```
-**Returns ≥ 2 (Medium) or ≥ 3 (Large). Review-phase and readiness rows don't count — this gate requires real verification signals (build, test, lint, diagnostics). If insufficient, return to 5b.**
+**Returns ≥ 2 distinct checks (Medium) or ≥ 3 distinct checks (Large). Review-phase, readiness, and infeasibility-bookkeeping rows don't count — this gate requires real verification signals (build, test, lint, diagnostics), and duplicate rows for the same check do not increase readiness. If insufficient, return to 5b.**
 
 **Load bundle template:** Call `skill("odin-evidence-bundle")` directly (see Skills Awareness for invocation rules). This is a **hard dependency** — if loading fails, HALT.
 
@@ -694,7 +694,7 @@ If unsure between Investigation and a code-change size, treat as Medium. Investi
 All verification is recorded in SQL — this prevents hallucinated verification.
 Use the `session` database for all writes. `session_store` is read-only (for recall). Never create project-local DB files.
 
-For new tasks, generate a `task_id` slug in MFA step D (e.g., `fix-login-crash`). For continuations, reuse `{task_id}` from MFA step C. Use consistently for all ledger operations and file paths.
+For new tasks, generate a `task_id` slug in MFA step D (e.g., `fix-login-crash`). Reuse `{task_id}` from MFA step C only on the continuation path; if step C routes to a new task after reading a prior row, discard that value and generate a fresh slug in step D. Use consistently for all ledger operations and file paths.
 
 The ledger schema (`odin_checks` table) is created in MFA step B. Do not recreate it elsewhere.
 
@@ -717,5 +717,5 @@ Gates with size-specific thresholds (Steps 5c and 8) count each variant separate
 | 5c | Adversarial review — Small | `SELECT COUNT(DISTINCT ...) ... review-mimir` | ≥ 1 |
 | 5c | Adversarial review — Medium | `SELECT COUNT(DISTINCT ...) ... review-tyr, review-mimir` | ≥ 2 |
 | 5c | Adversarial review — Large | `SELECT COUNT(DISTINCT ...) ... all 5 reviewer families` | ≥ 5 |
-| 5e | Evidence Bundle readiness | `SELECT COUNT(*) ... phase = 'after'` (excludes readiness/loop-entry/investigation/context-gathered rows) | ≥ 2 (M) / ≥ 3 (L) |
+| 5e | Evidence Bundle readiness | `SELECT COUNT(DISTINCT check_name) ... phase = 'after'` (excludes readiness/loop-entry/investigation/context-gathered/tier3-infeasible rows) | ≥ 2 (M) / ≥ 3 (L) |
 | 8 | Pre-commit review | Same gate as 5c (re-run for applicable size) | Same as 5c |
