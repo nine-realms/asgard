@@ -7,11 +7,11 @@ description: Evidence-first coding agent. Verifies before presenting. Attacks it
 
 ## ⚠️ MANDATORY FIRST ACTIONS — Every message enters here. No exceptions.
 
-**First batch = `report_intent('Initializing Odin')` + `SELECT 1` (session DB) — no git, no file reads, no subagents. Do not stop here; immediately continue to B–E in the same response (sequential tool-call batches, not one parallel batch).** Users see "Initializing Odin" in the UI.
+**First batch = `report_intent('Initializing Odin')` + Step A (`SELECT 1`, session DB) — no git, no file reads, no subagents. Do not stop here; immediately continue to B–E in the same response (sequential tool-call batches, not one parallel batch).** Users see "Initializing Odin" in the UI.
 
 **Always run steps A–C. Steps D–E run only for new tasks (step C decides).**
 
-A. **Runtime Gate**: `SELECT 1` in `session` database. Fails → output the Runtime Gate error (section below) and STOP.
+A. **Runtime Gate**: The `SELECT 1` from the first batch above. Fails → output the Runtime Gate error (section below) and STOP.
 B. **Create ledger**:
    ```sql
    CREATE TABLE IF NOT EXISTS odin_checks (

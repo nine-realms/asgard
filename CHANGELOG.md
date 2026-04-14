@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.11 — MFA stall fix + SELECT 1 duplication fix (benchmark findings)
+
+- **SELECT 1 duplication fix**: Arm C benchmark found Sonnet (-1) read the `SELECT 1` in the first-batch description and the `SELECT 1` in Step A's Runtime Gate as a double-execute. Fixed by making the first-batch description say "Step A (`SELECT 1`, session DB)" and Step A's body say "The `SELECT 1` from the first batch above". Arm C2 confirms the complaint is gone; score held at 43.5 avg (neutral — no regression).
+
 ## 0.10.11 — MFA stall fix (benchmark finding)
 
 - **"Nothing else" stall fix**: 3/4 benchmark models interpreted `"Nothing else"` on the first-batch instruction as a turn-stop signal — the agent would emit "Initializing Odin" and yield to the user before completing steps B–E. Rewritten to `"Do not stop here; immediately continue to B–E in the same response"`.
