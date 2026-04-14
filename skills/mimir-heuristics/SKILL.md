@@ -240,7 +240,7 @@ When code contains feature flags or toggle checks, verify that flags which have 
 
 #### CCA-021 · Template Placeholder Consistency
 
-When behavioral specification files (`.agent.md`, `.skill.md`) contain code blocks with `{placeholder}` tokens, verify that each placeholder is either defined in the same section, established by a prior step in the documented flow, or is a well-known convention (e.g., `{task_id}`, `{staged_diff}`). Orphaned placeholders in embedded code blocks mean the runtime will substitute nothing or the LLM will hallucinate a value — both produce silent failures that are hard to trace.
+When behavioral specification files (`.agent.md`, `.skill.md`, `SKILL.md`) contain code blocks with `{placeholder}` tokens, verify that each placeholder is either defined in the same section, established by a prior step in the documented flow, or is a well-known convention (e.g., `{task_id}`, `{staged_diff}`). Orphaned placeholders in embedded code blocks mean the runtime will substitute nothing or the LLM will hallucinate a value — both produce silent failures that are hard to trace.
 
 **Look for:**
 - `{placeholder}` tokens in SQL, bash, or template code blocks that are not defined or referenced elsewhere in the same specification file
@@ -301,9 +301,9 @@ When event handlers or callbacks modify shared state (class fields, global varia
 
 ## Specification-Aware Review
 
-When the diff contains `.agent.md` or `.skill.md` files, activate specification-aware analysis in addition to standard code review passes. These files are behavioral specifications — their "bugs" are logical contradictions, orphaned references, and impossible gates rather than null pointer exceptions.
+When the diff contains `.agent.md`, `.skill.md`, or `SKILL.md` files, activate specification-aware analysis in addition to standard code review passes. These files are behavioral specifications — their "bugs" are logical contradictions, orphaned references, and impossible gates rather than null pointer exceptions.
 
-**Activation:** Automatic when any file in the diff matches `*.agent.md` or `*.skill.md`. This mode is **additive** — standard code review passes still run for any code files in the same diff.
+**Activation:** Automatic when any file in the diff matches `*.agent.md`, `*.skill.md`, or is named `SKILL.md`. This mode is **additive** — standard code review passes still run for any code files in the same diff.
 
 **Additional analysis for spec files:**
 1. **Section dependency graph**: Trace which sections reference which other sections. Flag any reference to a section, step, or gate that doesn't exist or was renamed.

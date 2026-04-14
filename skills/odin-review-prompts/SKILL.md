@@ -18,8 +18,8 @@ This skill is a **hard dependency** for Odin's Step 5c adversarial review. It pr
 ## 1. File-Type Classification
 
 Classify the staged files into three categories:
-- **Specification files**: `.agent.md`, `.skill.md` — behavioral specification files that define agent/skill instructions
-- **Documentation/config files**: `.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, other config files (excluding `.agent.md` and `.skill.md`)
+- **Specification files**: `.agent.md`, `.skill.md`, and files named `SKILL.md` — behavioral specification files that define agent/skill instructions
+- **Documentation/config files**: `.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, other config files (excluding `.agent.md`, `.skill.md`, and `SKILL.md`)
 - **Code files**: everything else
 
 Then select the prompt:
@@ -34,7 +34,7 @@ Then select the prompt:
 
 ### Specification Review Prompt
 
-Use when **all** changed files are specification files (`.agent.md`, `.skill.md`):
+Use when **all** changed files are specification files (`.agent.md`, `.skill.md`, `SKILL.md`):
 
 ```
 agent_type: "code-review"
@@ -59,7 +59,7 @@ prompt: "Review the following staged changes to behavioral specification files.
 
 ### Documentation Review Prompt
 
-Use when **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files — excluding `.agent.md` and `.skill.md`):
+Use when **all** changed files are documentation-only (`.md`, `.mdx`, `.txt`, `.yaml`, `.json`, `.xml`, config files — excluding `.agent.md`, `.skill.md`, and `SKILL.md`):
 
 ```
 agent_type: "code-review"
@@ -83,7 +83,7 @@ prompt: "Review the following staged changes.
 
 ### Code Review Prompt
 
-Use when **code files are present** (with or without spec/doc files). Append spec criteria if `.agent.md` or `.skill.md` files are also in the diff:
+Use when **code files are present** (with or without spec/doc files). Append spec criteria if `.agent.md`, `.skill.md`, or `SKILL.md` files are also in the diff:
 
 ```
 agent_type: "code-review"
@@ -100,7 +100,7 @@ prompt: "Review the following staged changes.
          For each issue: what the bug is, why it matters, and the fix.
          If nothing wrong, say so.
          {IF_SPEC_FILES_IN_DIFF}
-         Additionally, for any .agent.md or .skill.md files in the diff, also evaluate:
+         Additionally, for any .agent.md, .skill.md, or SKILL.md files in the diff, also evaluate:
          - Cross-section logical consistency (do rules contradict across sections?)
          - Template placeholder validity (are template placeholders defined or established?)
          - Embedded code/SQL correctness (would the blocks actually execute?)
@@ -110,7 +110,7 @@ prompt: "Review the following staged changes.
 
 ### Conditional Inclusion Marker
 
-The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditional inclusion marker** for Odin to expand at runtime: include the enclosed text only when `.agent.md` or `.skill.md` files appear in the staged diff's file list. When no spec files are present, omit the block entirely.
+The `{IF_SPEC_FILES_IN_DIFF}...{/IF_SPEC_FILES_IN_DIFF}` block is a **conditional inclusion marker** for Odin to expand at runtime: include the enclosed text only when `.agent.md`, `.skill.md`, or `SKILL.md` files appear in the staged diff's file list. When no spec files are present, omit the block entirely.
 
 ---
 
