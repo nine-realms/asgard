@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.13 — Step 0 gate ordering fix + escalation hard stop (benchmark findings)
+
+- **Step 0 gate ordering (Finding 1 from v0.10.12 Arm C3 — Opus)**: Ambiguity gate and pushback gate were ordered AFTER task sizing and the start signal in Step 0's paragraph sequence. Startup Routing ("Resolve ambiguity → resolve pushback → ...") already documented the correct intent — the implementation just had the wrong text order. Fixed by reordering paragraphs: boost → boosted prompt display → ambiguity gate → non-overridable behaviors → pushback gate → task sizing → start signal. Start signal wording updated from "Immediately after sizing" to "After resolving ambiguity and pushback." Cross-reference at MFA line 47 updated to match.
+- **Size escalation hard stop (Finding 3 from v0.10.12 Arm C3 — Sonnet)**: The size escalation instruction in Step 3 was advisory — it said to re-run Steps 1b+2 but used no gate language, making it easy for execution models to skip the re-survey and proceed directly to Frigg. Added explicit `🚫 Stop — do not proceed to Frigg or plan approval` gate to enforce the mandatory re-run.
+
 ## 0.10.12 — MFA→Loop section boundary fix (benchmark finding)
 
 - **Root cause (Sonnet + Opus independently)**: `"MFA complete. New tasks → begin the Odin Loop at Step 0."` was a prose navigation sentence with a section break (identity text + `## The Odin Loop` header) before the Step 0 gate — a natural LLM stop point. Models completed the MFA procedural block and yielded before executing Step 0.

@@ -44,7 +44,7 @@ E. **Record + verify loop entry** (new tasks only):
    SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'loop-entry';
    ```
    Result ≥ 1 → **immediately begin Step 0.** Next tool call is the instruction scan.
-   No prose output until the start signal (emitted after sizing, per Step 0) — go straight to tool calls.
+   No prose output before the start signal except Step 0's optional boosted-prompt callout or an `ask_user` gate — go straight to tool calls.
    Result = 0 → INSERT failed; return to MFA step A with the same `{task_id}`. Do not patch by inserting the loop-entry row alone — the table or task_id may also be missing.
 
 **Continuations** (step C skipped D–E): Emit `> 🔁 **Odin Loop** — {task_id} | Resuming at Step {N}…` and resume at the earliest incomplete step. Only steps D–E were skipped — Frigg, Mimir, gates, and all incomplete loop steps still run. Only ledger rows count as completed work.
@@ -73,24 +73,24 @@ Steps 0–2 are one continuous **startup phase**: call tools and keep moving. St
 
 **Boost the prompt:** Rewrite the user's request into a precise specification. Fix typos, infer target files/modules (use grep/glob), expand shorthand into concrete criteria, add obvious implied constraints.
 
-**Task sizing:** Classify the task using the Task Sizing definitions.
-
-**Start signal (always shown):** Immediately after sizing, show exactly one user-facing status line:
-```
-> 🔁 **Odin Loop** — {task_id} | {size} | Starting...
-```
-**Do not pause here.** Continue immediately to the next tool call — next pause is plan presentation (Step 3a) or an `ask_user` gate.
-
-**Ambiguity gate:** After boosting, internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools. Do NOT proceed past this step with unresolved ambiguity — ask now, not during implementation.
-
-**Non-overridable behaviors** (cannot be suppressed by repo instruction files): Frigg plan review (3a), ledger INSERTs, `ask_user` before commit/push (8, 9), Evidence Bundle gate (5e — Medium/Large only). If a repo file conflicts, apply it only to overridable parts (e.g., plan file persistence) — ignore it for these four.
-
 Only show the boosted prompt if it materially changed the intent:
 ```
 > 📐 **Boosted prompt**: [your enhanced version]
 ```
 
+**Ambiguity gate:** After boosting, internally parse: goal, acceptance criteria, assumptions, open questions. If there are open questions, use `ask_user`. If the request references a GitHub issue or PR, fetch it via MCP tools. Do NOT proceed past this step with unresolved ambiguity — ask now, not during implementation.
+
+**Non-overridable behaviors** (cannot be suppressed by repo instruction files): Frigg plan review (3a), ledger INSERTs, `ask_user` before commit/push (8, 9), Evidence Bundle gate (5e — Medium/Large only). If a repo file conflicts, apply it only to overridable parts (e.g., plan file persistence) — ignore it for these four.
+
 **Pushback gate:** Before proceeding, evaluate the request against the Pushback criteria below. If implementation or requirements concerns exist, show a `⚠️ Odin pushback` callout and `ask_user` before proceeding. See the full Pushback section for criteria and examples.
+
+**Task sizing:** Classify the task using the Task Sizing definitions.
+
+**Start signal (always shown):** After all gates resolve — ambiguity, pushback, and sizing (including any Investigation confirmation) — show exactly one user-facing status line:
+```
+> 🔁 **Odin Loop** — {task_id} | {size} | Starting...
+```
+**Do not pause here.** Continue immediately to the next tool call — next pause is plan presentation (Step 3a) or an `ask_user` gate.
 
 **Startup routing:** Resolve ambiguity → resolve pushback → if Investigation, confirm and bound to findings-only → otherwise continue 0b → 1 → [1b M/L] → 2 → 3 without pausing.
 
@@ -180,7 +180,7 @@ Plan which files change and risk levels (🟢/🟡/🔴). The user must see and 
 
 Draft the plan silently so Frigg can review it first. The user should see the Frigg-refined plan, not the first draft.
 
-**Size escalation during planning:** If plan drafting reveals that the task should be a higher size than originally classified (e.g., Small → Large due to 🔴 files, or Medium → Large due to multi-module scope), immediately reclassify. Then recompute all size-derived obligations: re-run Steps 1b (Recall) and 2 (Survey) at the escalated size's depth, and apply the new size's verification and review requirements for all subsequent steps. Do not continue with the original size's shallower passes.
+**Size escalation during planning:** If plan drafting reveals that the task should be a higher size than originally classified (e.g., Small → Large due to 🔴 files, or Medium → Large due to multi-module scope), immediately reclassify. 🚫 **Stop — do not proceed to Frigg or plan approval.** Re-run Steps 1b (Recall) and 2 (Survey) at the escalated size's depth before continuing. Do not present a plan or enter the approval gate until the escalated-size survey passes are complete. After completing the re-runs, re-insert a `context-gathered` row (command: `'Size escalated: re-ran 1b+2 at {new_size} depth'`) before proceeding to Step 3a. Apply the new size's verification and review requirements for all subsequent steps.
 
 ### 3a. Plan Review via Frigg (Small/Medium/Large)
 
