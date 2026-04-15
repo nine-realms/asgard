@@ -2,6 +2,56 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.16 — Frigg approval placeholder fix + changelog cleanup
+
+- **Frigg approval SQL placeholder fix (PR review)**: Step 3a still used pseudo-placeholders like `{1_if_approved | 0_if_cancelled}` and `{1_if_approved_or_user_proceeded | 0_if_cancelled}` in executable SQL blocks. Replaced both with a single explicit `{passed}` placeholder and defined its `1`/`0` meaning in the surrounding prose so the runtime instructions stay syntactically valid and consistent.
+- **Changelog heading cleanup (PR review)**: Merged the split `0.10.11` release notes under one heading so the release history has a single canonical section for that version.
+
+## 0.10.15 — Continuation task_id hardening + distinct Evidence Bundle readiness (benchmark findings)
+
+- **Continuation task_id hardening (Sonnet/Opus — v0.10.14 standard benchmark)**: MFA step C could read the most recent `loop-entry` row, set `{task_id}`, then route to **new task** with that stale value still in scope. This left room for models to satisfy later gates against the prior task's ledger rows. Hardened the new-task exits in step C to explicitly discard the carried-forward `{task_id}` and clarified in step D + Verification Ledger that only true continuations reuse MFA step C's value; every new-task path must generate a fresh slug in step D.
+- **Evidence Bundle readiness counts distinct real checks (Opus/Tyr — v0.10.14 standard benchmark + review)**: Step 5e previously used `COUNT(*)` over eligible `phase='after'` rows, so duplicate verification inserts for the same check could inflate readiness. Tightened the gate to `COUNT(DISTINCT check_name)` and excluded `tier3-infeasible` bookkeeping rows, so readiness now requires distinct verification signals, not raw row count or infeasibility markers.
+
+## 0.10.14 — Loop gate + MFA batch clarity + SKILL.md spec detection (benchmark findings)
+
+- **Loop-entry gate at section level (Opus Q5 — v0.10.13 standard benchmark)**: Multiple models independently found that LLMs pattern-match `## The Odin Loop` as the entry point and skip MFA. The existing precondition was buried in prose inside Step 0. Added a formal `🚫 GATE` block at the top of `## The Odin Loop` (before Step 0) with the loop-entry SQL query and explicit "return to MFA step A" instruction for any failure including query errors.
+- **MFA batch sequencing clarity (Sonnet Q3/Q4 — v0.10.13 standard benchmark)**: Line 10's "Steps B–E follow immediately in this turn, each as its own tool-call batch" was flagged as ambiguous — "in this turn" could be read as "all in one LLM response," breaking the C→D conditional dependency. Changed to "follow immediately as sequential tool-call batches — wait for each result before issuing the next; do not combine C with D/E in a single batch."
+- **SKILL.md spec file detection (GPT-5.4 Q3 — v0.10.13 standard benchmark)**: The spec file classifier in `odin-review-prompts/SKILL.md` matched `.skill.md` extension only, but repo skill files are named `SKILL.md`. This caused skill file changes to be misclassified as documentation, applying the wrong review prompt. Updated all classification references in `odin-review-prompts/SKILL.md` and `mimir-heuristics/SKILL.md` to include `SKILL.md` alongside `.skill.md` — affects File-Type Classification, prompt template headers, the `{IF_SPEC_FILES_IN_DIFF}` conditional marker, and Mimir's spec-aware activation trigger (CCA-021, CCA-022).
+- **Frigg approval scope clarity (Sonnet Q3 — v0.10.13 standard benchmark)**: Step 3a's "do not prompt a second time" note on the tradeoff path was at risk of being over-generalized — an LLM could read it as "you already asked once in Step 3a, skip approval on other paths." Reworded to "do not add a second approval prompt for this same unchanged plan presentation" to scope it to the specific path only.
+
+## 0.10.13 — Step 0 gate ordering fix + escalation hard stop (benchmark findings)
+
+- **Step 0 gate ordering (Finding 1 from v0.10.12 Arm C3 — Opus)**: Ambiguity gate and pushback gate were ordered AFTER task sizing and the start signal in Step 0's paragraph sequence. Startup Routing ("Resolve ambiguity → resolve pushback → ...") already documented the correct intent — the implementation just had the wrong text order. Fixed by reordering paragraphs: boost → boosted prompt display → ambiguity gate → non-overridable behaviors → pushback gate → task sizing → start signal. Start signal wording updated from "Immediately after sizing" to "After resolving ambiguity and pushback." Cross-reference at MFA line 47 updated to match.
+- **Size escalation hard stop (Finding 3 from v0.10.12 Arm C3 — Sonnet)**: The size escalation instruction in Step 3 was advisory — it said to re-run Steps 1b+2 but used no gate language, making it easy for execution models to skip the re-survey and proceed directly to Frigg. Added explicit `🚫 Stop — do not proceed to Frigg or plan approval` gate to enforce the mandatory re-run.
+
+## 0.10.12 — MFA→Loop section boundary fix (benchmark finding)
+
+- **Root cause (Sonnet + Opus independently)**: `"MFA complete. New tasks → begin the Odin Loop at Step 0."` was a prose navigation sentence with a section break (identity text + `## The Odin Loop` header) before the Step 0 gate — a natural LLM stop point. Models completed the MFA procedural block and yielded before executing Step 0.
+- **Fix**: MFA now ends with a `🚫 Verify and proceed immediately` gate block containing the loop-entry SELECT. The gate's success path says `"immediately begin Step 0 — next tool call is the instruction scan"` — a forward imperative, not navigation.
+- **Step 0**: Removed the redundant loop-entry gate SQL block (now covered by MFA). Added a one-line precondition note documenting the dependency on MFA.
+- **Startup phase intro (line ~55)**: Compressed from 5 sentences to 2 — removed redundant "not stopping / not pausing" prose that was a symptom of the structural gap, not a cure.
+- **Start signal warning (line ~79)**: Compressed from 4 sentences to 2 for same reason.
+- **Line 10**: Reframed `"Do not stop here; immediately continue to B–E in the same response (sequential tool-call batches, not one parallel batch)"` → `"Steps B–E follow immediately in this turn, each as its own tool-call batch."` Positive statement, clearer "this turn" wording.
+- **Gate Registry**: `loop-entry` gate moved from `Step 0` → `MFA`.
+
+## 0.10.11 — MFA stall fix + SELECT 1 duplication fix (benchmark findings)
+
+- **SELECT 1 duplication fix**: Arm C benchmark found Sonnet (-1) read the `SELECT 1` in the first-batch description and the `SELECT 1` in Step A's Runtime Gate as a double-execute. Fixed by making the first-batch description say "Step A (`SELECT 1`, session DB)" and Step A's body say "The `SELECT 1` from the first batch above". Arm C2 confirms the complaint is gone; score held at 43.5 avg (neutral — no regression).
+
+- **"Nothing else" stall fix**: 3/4 benchmark models interpreted `"Nothing else"` on the first-batch instruction as a turn-stop signal — the agent would emit "Initializing Odin" and yield to the user before completing steps B–E. Rewritten to `"Do not stop here; immediately continue to B–E in the same response"`.
+- **"Same turn" parallel-batch ambiguity**: A second benchmark round (v0.10.11 run) found that `"same turn"` was ambiguous — 3/4 models flagged it could mean "fire all B–E in one parallel batch" rather than sequential batches. Clarified to `"same response (sequential tool-call batches, not one parallel batch)"`.
+
+## 0.10.10 — Structural clarity fixes (benchmark findings)
+
+- **Frigg timeout gate fix**: The timeout path previously inserted `review-frigg-timeout` with `passed=1` and declared "the timeout row satisfies the Frigg gate" — meaning an LLM could skip the mandatory `ask_user` plan approval by satisfying the gate with the timeout row alone. Fixed: timeout row is now bookkeeping only (`passed=1` records the event, not approval); a second `review-frigg` INSERT is added *after* `ask_user` to capture the user's actual decision; the Step 3a gate now checks only `review-frigg`. Plan approval via `ask_user` is structurally required before the gate can be satisfied.
+- **MFA step numbering**: Renamed MFA steps 1–5 → A–E throughout the file (MFA block + 7 cross-references). Eliminates namespace collision with Loop steps 0–10; "go back to step A" is unambiguous where "go back to step 1" was not.
+
+## 0.10.9 — Targeted clarity fixes (Sonnet review)
+
+- **Evidence Bundle qualifier in non-overridable list**: Changed "Evidence Bundle (5e)" → "Evidence Bundle gate (5e — Medium/Large only)" in Step 0's non-overridable behaviors list. Small tasks don't have an Evidence Bundle — without the qualifier a literal-following model could misapply this requirement on Small tasks.
+- **Plan review exception compressed**: Reduced from ~7 lines to 2 lines in Step 0. Keeps the scope guard ("user-provided plan, not an Odin draft") and the behavioral rule (findings-only, not an approval gate), but references Step 3a for INSERT field details instead of restating them inline. Saves ~5 lines from high-attention Step 0 real estate.
+- **Removed fork attribution from agent header**: The "Forked from burkeholland/anvil" blockquote was human-oriented provenance that consumed tokens every turn. Moved to README (already present) and CHANGELOG (already the opening line).
+
 ## 0.10.8 — Prose compression + MFA done signal
 
 - **MFA block compressed from 58→38 lines**: Hybrid-compact CREATE TABLE (scannable but shorter), tighter continuation prose, removed redundant progress-label paragraph. All logic preserved.
