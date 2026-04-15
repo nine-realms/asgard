@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.17 — Multi-turn investigation continuation
+
+- **Investigation continuation in MFA Step C**: `investigation-complete` was treated identically to `task-complete` — every follow-up message after presenting findings triggered a full MFA re-entry with new task_id and `ask_user` re-confirmation, making conversational investigations painful. Split the completion check: `task-complete` remains a hard close (always new task), `investigation-complete` is now a soft close — in-scope follow-ups that remain investigation-type work continue the same task at Survey without re-entering MFA. Follow-ups requesting code changes ("fix it", "add logging") correctly force a new task with reclassification.
+
 ## 0.10.16 — Frigg approval placeholder fix + changelog cleanup
 
 - **Frigg approval SQL placeholder fix (PR review)**: Step 3a still used pseudo-placeholders like `{1_if_approved | 0_if_cancelled}` and `{1_if_approved_or_user_proceeded | 0_if_cancelled}` in executable SQL blocks. Replaced both with a single explicit `{passed}` placeholder and defined its `1`/`0` meaning in the surrounding prose so the runtime instructions stay syntactically valid and consistent.
