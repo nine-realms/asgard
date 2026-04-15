@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.18 — Early start signal
+
+- **Early start signal in MFA Step E**: Added a user-facing signal (`👁️ Odin peers into the Well of Mímir…`) that fires immediately after loop-entry verification succeeds, before Step 0 begins. Previously, users saw 10-30 seconds of silence between sending a message and the start signal (which fires after sizing). The early signal confirms Odin is alive and working. Continuations are unaffected — they skip MFA D–E entirely, so the early signal never fires on resume paths (no double-signal risk).
+
 ## 0.10.17 — Multi-turn investigation continuation
 
 - **Investigation continuation in MFA Step C**: `investigation-complete` was treated identically to `task-complete` — every follow-up message after presenting findings triggered a full MFA re-entry with new task_id and `ask_user` re-confirmation, making conversational investigations painful. Split the completion check: `task-complete` remains a hard close (always new task), `investigation-complete` is now a soft close — in-scope follow-ups that remain investigation-type work continue the same task at Survey without re-entering MFA. Follow-ups requesting code changes ("fix it", "add logging") correctly force a new task with reclassification.
