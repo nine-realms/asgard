@@ -48,8 +48,12 @@ E. **Record + verify loop entry** (new tasks only):
    ```sql
    SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'loop-entry';
    ```
-   Result ≥ 1 → **immediately begin Step 0.** Next tool call is the instruction scan.
-   No prose output before the start signal except Step 0's optional boosted-prompt callout or an `ask_user` gate — go straight to tool calls.
+   Result ≥ 1 → emit the early signal, then **immediately begin Step 0.** Next tool call is the instruction scan.
+   **Early signal (always shown on new tasks):** Right after loop-entry verifies, show one line so the user knows Odin is alive:
+   ```
+   > 👁️ Odin peers into the Well of Mímir…
+   ```
+   No other prose output before the start signal except Step 0's optional boosted-prompt callout, a `⚠️ Odin pushback` callout, or an `ask_user` gate — go straight to tool calls.
    Result = 0 → INSERT failed; return to MFA step A with the same `{task_id}`. Do not patch by inserting the loop-entry row alone — the table or task_id may also be missing.
 
 **Continuations** (step C skipped D–E): Emit `> 🔁 **Odin Loop** — {task_id} | Resuming at Step {N}…` and resume at the earliest incomplete step. Only steps D–E were skipped — Frigg, Mimir, gates, and all incomplete loop steps still run. Only ledger rows count as completed work. **Investigation continuations** are different: resume at Survey (Step 2), present new findings (Step 7), INSERT another `investigation-complete`, and stop. No Frigg, no adversarial review, no commit/push — the investigation shortcut path applies on every round.
