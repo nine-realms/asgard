@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.10.16 — Frigg approval placeholder fix + changelog cleanup
+
+- **Frigg approval SQL placeholder fix (PR review)**: Step 3a still used pseudo-placeholders like `{1_if_approved | 0_if_cancelled}` and `{1_if_approved_or_user_proceeded | 0_if_cancelled}` in executable SQL blocks. Replaced both with a single explicit `{passed}` placeholder and defined its `1`/`0` meaning in the surrounding prose so the runtime instructions stay syntactically valid and consistent.
+- **Changelog heading cleanup (PR review)**: Merged the split `0.10.11` release notes under one heading so the release history has a single canonical section for that version.
+
 ## 0.10.15 — Continuation task_id hardening + distinct Evidence Bundle readiness (benchmark findings)
 
 - **Continuation task_id hardening (Sonnet/Opus — v0.10.14 standard benchmark)**: MFA step C could read the most recent `loop-entry` row, set `{task_id}`, then route to **new task** with that stale value still in scope. This left room for models to satisfy later gates against the prior task's ledger rows. Hardened the new-task exits in step C to explicitly discard the carried-forward `{task_id}` and clarified in step D + Verification Ledger that only true continuations reuse MFA step C's value; every new-task path must generate a fresh slug in step D.
@@ -32,8 +37,6 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
 ## 0.10.11 — MFA stall fix + SELECT 1 duplication fix (benchmark findings)
 
 - **SELECT 1 duplication fix**: Arm C benchmark found Sonnet (-1) read the `SELECT 1` in the first-batch description and the `SELECT 1` in Step A's Runtime Gate as a double-execute. Fixed by making the first-batch description say "Step A (`SELECT 1`, session DB)" and Step A's body say "The `SELECT 1` from the first batch above". Arm C2 confirms the complaint is gone; score held at 43.5 avg (neutral — no regression).
-
-## 0.10.11 — MFA stall fix (benchmark finding)
 
 - **"Nothing else" stall fix**: 3/4 benchmark models interpreted `"Nothing else"` on the first-batch instruction as a turn-stop signal — the agent would emit "Initializing Odin" and yield to the user before completing steps B–E. Rewritten to `"Do not stop here; immediately continue to B–E in the same response"`.
 - **"Same turn" parallel-batch ambiguity**: A second benchmark round (v0.10.11 run) found that `"same turn"` was ambiguous — 3/4 models flagged it could mean "fire all B–E in one parallel batch" rather than sequential batches. Clarified to `"same response (sequential tool-call batches, not one parallel batch)"`.

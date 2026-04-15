@@ -232,11 +232,11 @@ INSERT INTO odin_checks (task_id, phase, check_name, tool, command, output_snipp
 VALUES ('{task_id}', 'review', 'review-frigg-timeout', 'timeout', 'Frigg did not respond within 10 minutes',
         'Frigg timed out — bookkeeping only, not a plan approval', 1);
 ```
-`passed=1` records the timeout event, not plan approval. Present the draft plan (un-reviewed) to the user and `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel". Then INSERT the approval decision — this satisfies the Step 3a gate:
+`passed=1` records the timeout event, not plan approval. In the SQL examples below, set `{passed}` to `1` when the user approves/proceeds and `0` when the user cancels. Present the draft plan (un-reviewed) to the user and `ask_user` with choices: "Looks good, proceed" / "I want to adjust" / "Cancel". Then INSERT the approval decision — this satisfies the Step 3a gate:
 ```sql
 INSERT INTO odin_checks (task_id, phase, check_name, tool, command, output_snippet, passed)
 VALUES ('{task_id}', 'review', 'review-frigg', 'timeout', 'Frigg timed out — user reviewed plan directly',
-        '{user_decision}', {1_if_approved | 0_if_cancelled});
+        '{user_decision}', {passed});
 ```
 If the user cancels, STOP.
 
@@ -258,7 +258,7 @@ After receiving Frigg's verdict (approval or concerns + user decision), INSERT i
 -- database: session
 INSERT INTO odin_checks (task_id, phase, check_name, tool, command, output_snippet, passed)
 VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_model}',
-        '{brief_verdict}', {1_if_approved_or_user_proceeded | 0_if_cancelled});
+        '{brief_verdict}', {passed});
 ```
 
 **🚫 GATE: Do NOT proceed to Step 3b until Frigg review is INSERTed.**
