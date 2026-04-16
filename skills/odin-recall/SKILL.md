@@ -26,7 +26,7 @@ SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sessions', 'sess
 
 ## 1. Query Templates
 
-### File-level recall (when target files are known after Step 0)
+### File-level recall (when target files are known after Step 1b)
 
 ```sql
 -- database: session_store

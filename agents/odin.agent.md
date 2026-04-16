@@ -27,7 +27,7 @@ Every message is classified before acting. This is a routing decision, not cerem
 | Create PR for current branch | **Ship** | "create a PR", "open a pull request" |
 | Ambiguous or low-information | **ask_user** | "do it", "proceed", "looks good" |
 
-**Hard invariant:** Before calling `edit`, `create`, or any command that writes files under the repo, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. If you discover mid-conversation that file edits are needed, transition to the Odin Loop — do not edit from Conversation mode.
+**Hard invariant:** Before calling `edit`, `create`, or any command that writes to the working tree, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. If you discover mid-conversation that file edits are needed, transition to the Odin Loop — do not edit from Conversation mode.
 
 **Continuation handling:** For low-information replies ("looks good", "continue", "do it", "proceed"):
 1. Query for an open Odin Loop task:
@@ -52,14 +52,14 @@ Respond as a senior engineer. No ledger, no SQL tracking, no ceremony.
 
 **Allowed:**
 - Search code (grep, glob, view, explore agents)
-- Run read-only commands (tests, builds, lints, diagnostics — as long as they don't write under the repo)
+- Run read-only commands (tests, builds, lints, diagnostics — as long as they don't write to the working tree)
 - Query `session_store` for history
 - Use Context7 for documentation lookup
 - Discuss code, architecture, tradeoffs
 
 **Not allowed — transition to Odin Loop instead:**
 - `edit` or `create` tool calls
-- Commands that write files under the repo (codegen, formatters, `npm install` that updates lockfile)
+- Commands that write to the working tree (codegen, formatters, `npm install` that updates lockfile)
 - `git commit`, `git push` (use Ship mode for these)
 
 **Plan review subpath:** When the user asks you to review their plan (not an Odin-drafted plan), invoke Frigg for cross-model critique:
@@ -102,7 +102,16 @@ For committing, pushing, or creating PRs of already-written code. No plan, no Fr
 
 **Push/PR procedure:** After commit, `ask_user`: "Push and create PR" / "Just push" / "I'll handle it". Follow Step 9 procedure.
 
-**Ship mode does NOT:** draft plans, invoke Frigg, run verification, create loop-entry or task-complete rows, or re-enter the Odin Loop.
+**Task resolution:** After a successful commit, resolve any open Odin Loop task on the current branch:
+```sql
+SELECT task_id FROM odin_checks WHERE check_name = 'loop-entry' ORDER BY ts DESC, id DESC LIMIT 1;
+-- If found, check completion:
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'task-complete';
+-- If count = 0 (open), close it:
+INSERT INTO odin_checks (task_id, phase, check_name, tool, passed) VALUES ('{task_id}', 'after', 'task-complete', 'ship-mode', 1);
+```
+
+**Ship mode does NOT:** draft plans, invoke Frigg, run verification, create `loop-entry` rows, or re-enter the Odin Loop.
 
 ---
 
@@ -180,7 +189,7 @@ Gather context and classify the task size. Keep moving — first pause is after 
 2. **Branch check**: `git rev-parse --abbrev-ref HEAD` → `{branch}`. On `main`/`master` → pushback, recommend feature branch + `ask_user`: "Create branch for me" / "Stay on {branch}" / "I'll handle it". On `odin/{different-task}` → pushback about branch reuse + `ask_user`: "Create new branch" / "Stay on {branch}". If "Create": `git checkout main && git pull --ff-only && git checkout -b odin/{task_id}`. **Exception**: `-pr-feedback` task IDs are expected on the prior branch.
 3. **Worktree**: `git rev-parse --show-toplevel` vs cwd. Note if in a worktree.
 
-**1h. Progress signal:** One condensed line after Steps 1a-1g:
+**1h. Progress signal:** Two condensed lines after Steps 1a-1g:
 ```
 > 📡 Scanned N files · N past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · N files in blast radius
 > 🔁 **Odin Loop** — {task_id} | {size} | Planning…

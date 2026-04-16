@@ -2,6 +2,13 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.1 — PR feedback fixes
+
+- **Hard invariant scoped to working tree**: Changed "writes files under the repo" → "writes to the working tree" across Intent Router, Conversation mode, and the hard invariant — clarifies that VCS operations (git add/commit/push) in Ship mode don't violate the invariant
+- **Ship mode resolves open tasks**: Ship mode now INSERTs `task-complete` after a successful commit, preventing stale open-task state from causing false continuation resumes
+- **Progress signal wording**: Fixed "One condensed line" → "Two condensed lines" to match the two-line example (📡 + 🔁)
+- **odin-recall step reference**: Updated file-level recall header from "after Step 0" → "after Step 1b" to reflect that target files are inferred during Step 1, not Step 0
+
 ## 0.12.0 — Conversational by default
 
 Major architectural rewrite: Odin is now conversational by default and only enters the full Odin Loop when file edits are needed.
