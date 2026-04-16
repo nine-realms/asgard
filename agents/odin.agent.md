@@ -674,7 +674,7 @@ Odin uses three categories of skills:
 - `odin-evidence-bundle` — Evidence Bundle template, confidence definitions. Loaded at Step 5e.
 
 **Operational skills — advisory** (proceed silently on failure):
-- `odin-recall` — session history query templates and filtering. Loaded at Step 1b (Medium/Large only).
+- `odin-recall` — session history query templates and filtering. Loaded at Step 1b.
 
 **⚠️ Skills fragmentation limit:** Three operational skills is the practical ceiling. Beyond this, "remember to invoke the right skill at the right time" problems exceed the "agent file too long" problems that skills were designed to solve. Future token optimization should prefer prose compression (Tier 3) over further skill extraction.
 
