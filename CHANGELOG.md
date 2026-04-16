@@ -2,6 +2,21 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.11.0 — Phase 1 / Phase 2 architecture
+
+Refactors the Odin Loop into two explicit phases:
+- **Phase 1 (Understand)**: Steps 0–2c. Runs for every task type. Boost, scan, recall, survey, then classify at the Phase Transition Gate.
+- **Phase 2 (Act)**: Steps 2d–9. Runs only for code-change tasks. Size, git hygiene, plan, implement, verify, commit.
+
+Key changes:
+- New Step 2c (Phase Transition Gate): classifies task outcome as research-only, code-change, ambiguous, or plan-review
+- New Step 2d (Phase 2 Entry): Task Sizing + Git Hygiene moved here from Steps 0 and 0b
+- Research tasks present findings at Phase 1 boundary (Step 2c) — never enter Phase 2
+- Eliminated hard `ask_user` confirmation for Investigation classification
+- Phase 1 survey uses fixed 2-3 search budget; deep research escalation available at 2c
+- Steps 1b (Recall) and 2b (Progress Signal) now run for all tasks (no longer size-gated before sizing)
+- All existing step numbers preserved — zero skill reference breakage
+
 ## 0.10.18 — Early start signal
 
 - **Early start signal in MFA Step E**: Added a user-facing signal (`👁️ Odin peers into the Well of Mímir…`) that fires immediately after loop-entry verification succeeds, before Step 0 begins. Previously, users saw 10-30 seconds of silence between sending a message and the start signal (which fires after sizing). The early signal confirms Odin is alive and working. Continuations are unaffected — they skip MFA D–E entirely, so the early signal never fires on resume paths (no double-signal risk).
