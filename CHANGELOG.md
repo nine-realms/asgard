@@ -2,6 +2,18 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.0 — Conversational by default
+
+Major architectural rewrite: Odin is now conversational by default and only enters the full Odin Loop when file edits are needed.
+
+- **Intent Router**: 3-mode fail-closed dispatcher (Conversation / Odin Loop / Ship) replaces the MFA ceremony + Phase Transition Gate that ran on every message
+- **Conversation mode (default)**: Questions, research, diagnostics, and discussion no longer trigger SQL tracking, boost/scan/recall/survey ceremony, or Phase Transition Gate classification
+- **Ship mode**: Commit/push/PR of already-verified code goes through lightweight `ask_user` gates — no plan, Frigg review, or adversarial review re-run
+- **Hard invariant**: `edit`/`create`/repo-write commands still require a verified `loop-entry` row — the Odin Loop itself is unchanged
+- **Continuation handling**: Low-information replies ("looks good", "proceed") check for open loop tasks via SQL, not topic matching
+- **Phase 1/Phase 2 terminology removed**: replaced by Conversation vs Odin Loop
+- **Net reduction**: 789 → 590 lines (−25%) with all verification machinery, gates, and review steps preserved
+
 ## 0.11.3 — Phase 1 findings-only freedom
 
 - Broadened the existing `research-only` route into a findings-only Phase 1 path that also covers non-repo-mutating local operational work (tests, builds, installs, diagnostics) while keeping Phase 2 reserved for repo-mutating actions

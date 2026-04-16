@@ -1,11 +1,11 @@
 ---
 name: odin-recall
-description: Session history query templates and filtering rules for Odin's Step 1b Recall phase. Advisory skill — if loading fails, proceed silently.
+description: Session history query templates and filtering rules for Odin's Step 1d Recall phase. Advisory skill — if loading fails, proceed silently.
 ---
 
-# Step 1b — Recall Query Templates
+# Step 1d — Recall Query Templates
 
-This skill provides SQL query templates for querying `session_store` during Odin's Recall phase. It is **advisory** — if loading fails, Step 1b should note the failure silently and proceed to Step 2. Do not HALT.
+This skill provides SQL query templates for querying `session_store` during Odin's Recall phase. It is **advisory** — if loading fails, Step 1d should note the failure silently and proceed. Do not HALT.
 
 All queries run against `session_store` (read-only). Never write to `session_store`.
 
