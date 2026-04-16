@@ -1,11 +1,11 @@
 ---
 name: odin-recall
-description: Session history query templates and filtering rules for Odin's Step 1b Recall phase. Advisory skill — if loading fails, proceed silently.
+description: Session history query templates and filtering rules for Odin's Step 1d Recall phase. Advisory skill — if loading fails, proceed silently.
 ---
 
-# Step 1b — Recall Query Templates
+# Step 1d — Recall Query Templates
 
-This skill provides SQL query templates for querying `session_store` during Odin's Recall phase. It is **advisory** — if loading fails, Step 1b should note the failure silently and proceed to Step 2. Do not HALT.
+This skill provides SQL query templates for querying `session_store` during Odin's Recall phase. It is **advisory** — if loading fails, Step 1d should note the failure silently and proceed. Do not HALT.
 
 All queries run against `session_store` (read-only). Never write to `session_store`.
 
@@ -13,7 +13,7 @@ All queries run against `session_store` (read-only). Never write to `session_sto
 
 ## 0. Availability Guard
 
-Before running any query below, verify that `session_store` has the required tables. Run this check once per session — if it fails, skip all Recall queries silently and proceed to Step 2.
+Before running any query below, verify that `session_store` has the required tables. Run this check once per session — if it fails, skip all Recall queries silently and proceed to the next step.
 
 ```sql
 -- database: session_store
@@ -26,7 +26,7 @@ SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sessions', 'sess
 
 ## 1. Query Templates
 
-### File-level recall (when target files are known after Step 0)
+### File-level recall (when target files are known after Step 1b)
 
 ```sql
 -- database: session_store

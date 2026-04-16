@@ -2,6 +2,57 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.1 — PR feedback fixes
+
+- **Hard invariant scoped to working tree**: Changed "writes files under the repo" → "writes to the working tree" across Intent Router, Conversation mode, and the hard invariant — clarifies that VCS operations (git add/commit/push) in Ship mode don't violate the invariant
+- **Ship mode resolves open tasks**: Ship mode now INSERTs `task-complete` after a successful commit, preventing stale open-task state from causing false continuation resumes
+- **Progress signal wording**: Fixed "One condensed line" → "Two condensed lines" to match the two-line example (📡 + 🔁)
+- **odin-recall step reference**: Updated file-level recall header from "after Step 0" → "after Step 1b" to reflect that target files are inferred during Step 1, not Step 0
+
+## 0.12.0 — Conversational by default
+
+Major architectural rewrite: Odin is now conversational by default and only enters the full Odin Loop when file edits are needed.
+
+- **Intent Router**: 3-mode fail-closed dispatcher (Conversation / Odin Loop / Ship) replaces the MFA ceremony + Phase Transition Gate that ran on every message
+- **Conversation mode (default)**: Questions, research, diagnostics, and discussion no longer trigger SQL tracking, boost/scan/recall/survey ceremony, or Phase Transition Gate classification
+- **Ship mode**: Commit/push/PR of already-verified code goes through lightweight `ask_user` gates — no plan, Frigg review, or adversarial review re-run
+- **Hard invariant**: `edit`/`create`/repo-write commands still require a verified `loop-entry` row — the Odin Loop itself is unchanged
+- **Continuation handling**: Low-information replies ("looks good", "proceed") check for open loop tasks via SQL, not topic matching
+- **Phase 1/Phase 2 terminology removed**: replaced by Conversation vs Odin Loop
+- **Net reduction**: 789 → 590 lines (−25%) with all verification machinery, gates, and review steps preserved
+
+## 0.11.3 — Phase 1 findings-only freedom
+
+- Broadened the existing `research-only` route into a findings-only Phase 1 path that also covers non-repo-mutating local operational work (tests, builds, installs, diagnostics) while keeping Phase 2 reserved for repo-mutating actions
+
+## 0.11.2 — Recall scope consistency
+
+- Fixed stale "(Medium/Large only)" qualifier in Skills Awareness section for `odin-recall` — Recall runs for all tasks since sizing is deferred to Phase 2
+
+## 0.11.1 — Two-phase refactor hardening
+
+Fixes 4 issues identified during review of the Phase 1/Phase 2 architecture:
+- Step 2c Phase Transition Gate now INSERTs a `phase-transition` classification row with SQL verification gate at Step 2d entry
+- Recall (Step 1b) scope clarified: runs for all tasks since sizing is deferred to Phase 2
+- Removed redundant Step 0 start signal (keep Mímir early signal + Step 2d size signal — 2 signals, not 3)
+- Step 7 (Present) explicitly marked as Phase 2 only; research findings present at Step 2c
+- Evidence Bundle exclusion list updated to include `phase-transition` procedural marker
+
+## 0.11.0 — Phase 1 / Phase 2 architecture
+
+Refactors the Odin Loop into two explicit phases:
+- **Phase 1 (Understand)**: Steps 0–2c. Runs for every task type. Boost, scan, recall, survey, then classify at the Phase Transition Gate.
+- **Phase 2 (Act)**: Steps 2d–9. Runs only for code-change tasks. Size, git hygiene, plan, implement, verify, commit.
+
+Key changes:
+- New Step 2c (Phase Transition Gate): classifies task outcome as research-only, code-change, ambiguous, or plan-review
+- New Step 2d (Phase 2 Entry): Task Sizing + Git Hygiene moved here from Steps 0 and 0b
+- Research tasks present findings at Phase 1 boundary (Step 2c) — never enter Phase 2
+- Eliminated hard `ask_user` confirmation for Investigation classification
+- Phase 1 survey uses fixed 2-3 search budget; deep research escalation available at 2c
+- Steps 1b (Recall) and 2b (Progress Signal) now run for all tasks (no longer size-gated before sizing)
+- All existing step numbers preserved — zero skill reference breakage
+
 ## 0.10.18 — Early start signal
 
 - **Early start signal in MFA Step E**: Added a user-facing signal (`👁️ Odin peers into the Well of Mímir…`) that fires immediately after loop-entry verification succeeds, before Step 0 begins. Previously, users saw 10-30 seconds of silence between sending a message and the start signal (which fires after sizing). The early signal confirms Odin is alive and working. Continuations are unaffected — they skip MFA D–E entirely, so the early signal never fires on resume paths (no double-signal risk).
