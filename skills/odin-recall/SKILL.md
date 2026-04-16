@@ -13,7 +13,7 @@ All queries run against `session_store` (read-only). Never write to `session_sto
 
 ## 0. Availability Guard
 
-Before running any query below, verify that `session_store` has the required tables. Run this check once per session — if it fails, skip all Recall queries silently and proceed to Step 2.
+Before running any query below, verify that `session_store` has the required tables. Run this check once per session — if it fails, skip all Recall queries silently and proceed to the next step.
 
 ```sql
 -- database: session_store
