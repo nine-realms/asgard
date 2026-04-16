@@ -156,6 +156,16 @@ No other prose before Step 1 except a `⚠️ Odin pushback` callout or an `ask_
 
 Result = 0 → INSERT failed; retry from CREATE TABLE.
 
+**Multi-task session check:**
+```sql
+SELECT COUNT(DISTINCT task_id) FROM odin_checks WHERE check_name = 'loop-entry';
+```
+If result > 1:
+```
+> ⚠️ **Multi-task session detected** — prior task context is in the window. Treat this as a fresh loop. Conversational momentum from prior tasks is NOT implicit approval for any gate.
+```
+This is a reminder signal, not a gate. No blocking behavior.
+
 ### Step 1 — Understand
 
 Gather context and classify the task size. Keep moving — first pause is after the plan is drafted (Step 3a) or an earlier `ask_user` gate.
@@ -259,6 +269,18 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 **If result is 0, go back.**
 
 **🚫 GATE: User MUST approve the plan via `ask_user` before proceeding.**
+
+After user approves via `ask_user`, INSERT:
+```sql
+INSERT INTO odin_checks (task_id, phase, check_name, tool, command, passed)
+VALUES ('{task_id}', 'review', 'plan-approved', 'ask_user', 'User approved plan', 1);
+```
+
+**🚫 Verify:**
+```sql
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'plan-approved';
+```
+**Result must be ≥ 1 before any `edit` or `create` call. If 0, return to `ask_user`.**
 
 ### Step 3b — Plan Persistence (silent)
 
@@ -407,7 +429,47 @@ For Small: show change, confirm build passed, include Mimir findings if any.
 
 ### Step 8 — Commit
 
-**🚫 GATE: Re-run the Step 5c adversarial-review gate query for the applicable size. If insufficient, return to 5c.**
+**🚫 PRE-COMMIT CHECKLIST** — Run each query. ALL must pass for the applicable size.
+
+**All sizes:**
+```sql
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'plan-approved';
+-- Must be ≥ 1
+```
+
+**Medium and Large only:**
+```sql
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'baseline';
+-- Must be ≥ 1
+```
+
+**Small:**
+```sql
+SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks
+WHERE task_id = '{task_id}' AND phase = 'review'
+  AND check_name IN ('review-mimir', 'review-mimir-timeout');
+-- Must be ≥ 1
+```
+
+**Medium (all Small checks plus):**
+```sql
+SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks
+WHERE task_id = '{task_id}' AND phase = 'review'
+  AND check_name IN ('review-tyr', 'review-tyr-timeout');
+-- Must be ≥ 1
+```
+
+**Large (all Medium checks plus):**
+```sql
+SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks
+WHERE task_id = '{task_id}' AND phase = 'review'
+  AND check_name IN ('review-heimdall', 'review-heimdall-timeout',
+                     'review-thor', 'review-thor-timeout',
+                     'review-loki', 'review-loki-timeout');
+-- Must be ≥ 3 (one per additional reviewer family)
+```
+
+**If ANY required check returns 0 → STOP. Do not ask the user to override. Return to the earliest missing step.**
 
 **Always ask before committing** — `ask_user`: "Commit this change" / "I'll commit later" / "I want to review first".
 
@@ -589,11 +651,11 @@ The ledger schema (`odin_checks`) is created in Step 0. Do not recreate elsewher
 |------|------|-------|-----------|
 | 0 | Loop-entry verification | `check_name = 'loop-entry'` | ≥ 1 |
 | 3a | Frigg review recorded | `check_name = 'review-frigg' AND passed = 1` | ≥ 1 |
-| 3a | Plan approval by user | `ask_user` after Frigg INSERT | Required |
+| 3a | Plan approved by user | `check_name = 'plan-approved'` | ≥ 1 |
 | 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS |
 | 3c | Baseline captured | `phase = 'baseline'` | ≥ 1 |
 | 5c | Adversarial — Small | `review-mimir` | ≥ 1 |
 | 5c | Adversarial — Medium | `review-tyr, review-mimir` | ≥ 2 |
 | 5c | Adversarial — Large | all 5 reviewer families | ≥ 5 |
 | 5e | Evidence Bundle readiness | distinct `phase = 'after'` checks (excludes procedural rows) | ≥ 2 (M) / ≥ 3 (L) |
-| 8 | Pre-commit review | Same gate as 5c | Same |
+| 8 | Pre-commit checklist | `plan-approved` + `baseline` (M/L) + 5c reviewer gates (with timeout variants) | All ≥ 1 per query |
