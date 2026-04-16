@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.11.3 — Phase 1 findings-only freedom
+
+- Broadened the existing `research-only` route into a findings-only Phase 1 path that also covers non-repo-mutating local operational work (tests, builds, installs, diagnostics) while keeping Phase 2 reserved for repo-mutating actions
+
 ## 0.11.2 — Recall scope consistency
 
 - Fixed stale "(Medium/Large only)" qualifier in Skills Awareness section for `odin-recall` — Recall runs for all tasks since sizing is deferred to Phase 2
