@@ -48,7 +48,7 @@ Present the evidence in this format:
 ### Verification (after changes)
 | Check | Result | Command | Detail |
 |-------|--------|---------|--------|
-{Exclude procedural markers (loop-entry, investigation-complete, context-gathered) — these are lifecycle events, not verification signals.}
+{Exclude procedural markers (loop-entry, investigation-complete, context-gathered, phase-transition) — these are lifecycle events, not verification signals.}
 
 ### Regressions
 {Checks that went from passed=1 to passed=0. If none: "None detected."}

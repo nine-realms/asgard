@@ -105,10 +105,6 @@ Only show the boosted prompt if it materially changed the intent:
 
 **Task classification note:** Task Sizing (Small/Medium/Large) is deferred to Phase 2 Entry (Step 2d). At this point, focus on understanding the request — classification happens at the Phase Transition Gate (Step 2c) after the survey.
 
-**Start signal (always shown):** After all gates resolve — ambiguity and pushback — show exactly one user-facing status line:
-```
-> 🔁 **Odin Loop** — {task_id} | Starting...
-```
 **Do not pause here.** Continue immediately to the next tool call — next pause is the Phase Transition Gate (Step 2c) or an earlier `ask_user` gate.
 
 **Startup routing:** Resolve ambiguity → resolve pushback → continue 1 → [1b] → 2 → 2c without pausing.
@@ -130,7 +126,7 @@ Before planning, detect available build, test, and lint tooling. This informs bo
 
 ### 1b. Recall (silent - all tasks)
 
-Before the Phase Transition Gate, query session history for relevant context on the topic or files you're investigating.
+Recall runs for all tasks during Phase 1, since Task Sizing is deferred to Phase 2 Entry (Step 2d). Before the Phase Transition Gate, query session history for relevant context on the topic or files you're investigating.
 
 **Load recall templates:** Call `skill("odin-recall")` directly (see Skills Awareness for invocation rules). This is an **advisory** skill — if loading fails, proceed silently to Step 2.
 
@@ -184,6 +180,13 @@ This breaks the "silent wall" between task start and plan presentation. Keep it 
    ```
    Present findings and stop. Findings-only — not an approval gate.
 
+**Classification record:** After classifying, INSERT a routing breadcrumb so downstream steps can verify this gate ran:
+```sql
+INSERT INTO odin_checks (task_id, phase, check_name, tool, command, output_snippet, passed)
+VALUES ('{task_id}', 'after', 'phase-transition', 'sql', 'Phase Transition Gate classification', '{classification}', 1);
+```
+Where `{classification}` is one of: `research-only`, `code-change`, `plan-review`. For ambiguous tasks, INSERT after the user responds to `ask_user` — store their chosen classification (`research-only` or `code-change`), not `ambiguous`. This row is a routing breadcrumb, not a verification result — it is excluded from Evidence Bundle counts.
+
 **Guard:** If the boosted prompt (Step 0) clearly implies code changes (e.g., "fix the crash", "add a button", "refactor auth"), do NOT classify as research-only — route to code-change. Research-only is for requests where no code changes are expected.
 
 **Investigation continuations:** When MFA Step C routes to an investigation continuation, it resumes at Survey (Step 2) and returns here for classification. No re-confirmation via `ask_user` is needed — the task was already classified as research on the first pass. Present new findings and INSERT another `investigation-complete`.
@@ -195,6 +198,12 @@ This breaks the "silent wall" between task start and plan presentation. Keep it 
 Phase 2 runs **only for code-change tasks** (Small/Medium/Large). Steps 2d through 9 implement, verify, and commit the changes. Entry requires passing through the Phase Transition Gate (Step 2c).
 
 ### 2d. Phase 2 Entry — Task Sizing + Git Hygiene (code-change tasks only)
+
+**🚫 GATE: Phase Transition Gate must have run.** Before entering Phase 2, verify:
+```sql
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'phase-transition' AND output_snippet = 'code-change' AND passed = 1;
+```
+If result is 0, the Phase Transition Gate (Step 2c) was skipped — go back to Step 2c before proceeding.
 
 **Context-gathered sentinel:** Before sizing, record that Phase 1 (Boost, Scan, Recall, Survey) is complete. This creates an audit trail for the otherwise silent early steps.
 ```sql
@@ -470,7 +479,7 @@ INSERT each check into `odin_checks` with `phase = 'after'`, `check_name = 'read
 **🚫 GATE: Do NOT present the Evidence Bundle until:**
 ```sql
 -- database: session
-SELECT COUNT(DISTINCT check_name) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%' AND check_name NOT IN ('loop-entry', 'investigation-complete', 'context-gathered', 'tier3-infeasible');
+SELECT COUNT(DISTINCT check_name) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'after' AND check_name NOT LIKE 'readiness-%' AND check_name NOT IN ('loop-entry', 'investigation-complete', 'context-gathered', 'phase-transition', 'tier3-infeasible');
 ```
 **Returns ≥ 2 distinct checks (Medium) or ≥ 3 distinct checks (Large). Review-phase, readiness, and infeasibility-bookkeeping rows don't count — this gate requires real verification signals (build, test, lint, diagnostics), and duplicate rows for the same check do not increase readiness. If insufficient, return to 5b.**
 
@@ -491,7 +500,7 @@ Store confirmed facts immediately - don't wait for user acceptance (the session 
 
 Do NOT store: obvious facts, things already in project instructions, or facts about code you just wrote (it might not get merged).
 
-### 7. Present
+### 7. Present (Phase 2 only — Research tasks present findings at the Phase Transition Gate, Step 2c)
 
 The user sees at most:
 1. **Pushback** (if triggered)
@@ -765,7 +774,7 @@ Gates with size-specific thresholds (Steps 5c and 8) count each variant separate
 | Step | Gate | Check | Threshold |
 |------|------|-------|-----------|
 | MFA-E | Loop-entry verification | `SELECT COUNT(*) ... check_name = 'loop-entry'` | ≥ 1 |
-| 2c | Phase Transition Gate | Classification: research-only / code-change / ambiguous / plan-review | Required |
+| 2c | Phase Transition Gate | `SELECT COUNT(*) ... check_name = 'phase-transition'` + Classification: research-only / code-change / plan-review | ≥ 1 |
 | 3a | Frigg review recorded | `SELECT COUNT(*) ... check_name = 'review-frigg' AND passed = 1` | ≥ 1 |
 | 3a | Plan approval by user | Conversation must contain `ask_user` prompt after Frigg INSERT | Required |
 | 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS (skip if user-provided plan or repo opt-out) |
@@ -773,5 +782,5 @@ Gates with size-specific thresholds (Steps 5c and 8) count each variant separate
 | 5c | Adversarial review — Small | `SELECT COUNT(DISTINCT ...) ... review-mimir` | ≥ 1 |
 | 5c | Adversarial review — Medium | `SELECT COUNT(DISTINCT ...) ... review-tyr, review-mimir` | ≥ 2 |
 | 5c | Adversarial review — Large | `SELECT COUNT(DISTINCT ...) ... all 5 reviewer families` | ≥ 5 |
-| 5e | Evidence Bundle readiness | `SELECT COUNT(DISTINCT check_name) ... phase = 'after'` (excludes readiness/loop-entry/investigation/context-gathered/tier3-infeasible rows) | ≥ 2 (M) / ≥ 3 (L) |
+| 5e | Evidence Bundle readiness | `SELECT COUNT(DISTINCT check_name) ... phase = 'after'` (excludes readiness/loop-entry/investigation/context-gathered/phase-transition/tier3-infeasible rows) | ≥ 2 (M) / ≥ 3 (L) |
 | 8 | Pre-commit review | Same gate as 5c (re-run for applicable size) | Same as 5c |

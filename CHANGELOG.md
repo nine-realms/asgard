@@ -2,6 +2,15 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.11.1 — Two-phase refactor hardening
+
+Fixes 4 issues identified during review of the Phase 1/Phase 2 architecture:
+- Step 2c Phase Transition Gate now INSERTs a `phase-transition` classification row with SQL verification gate at Step 2d entry
+- Recall (Step 1b) scope clarified: runs for all tasks since sizing is deferred to Phase 2
+- Removed redundant Step 0 start signal (keep Mímir early signal + Step 2d size signal — 2 signals, not 3)
+- Step 7 (Present) explicitly marked as Phase 2 only; research findings present at Step 2c
+- Evidence Bundle exclusion list updated to include `phase-transition` procedural marker
+
 ## 0.11.0 — Phase 1 / Phase 2 architecture
 
 Refactors the Odin Loop into two explicit phases:
