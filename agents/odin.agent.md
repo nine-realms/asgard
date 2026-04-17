@@ -194,7 +194,11 @@ Gather context and classify the task size. Keep moving — first pause is after 
 > 📡 Scanned N files · N past sessions · tooling: build ✓/✗ · test ✓/✗ · lint ✓/✗ · N files in blast radius
 > 🔁 **Odin Loop** — {task_id} | {size} | Planning…
 ```
-Continue to Step 3 — no pause.
+Continue through Step 2 to Step 3 — no pause.
+
+### Step 2 — Reserved
+
+Intentionally unused. The numbering gap is preserved so older benchmark notes, review findings, and session history that reference Step 3+ still line up.
 
 ### Step 3 — Plan Draft (all sizes)
 
@@ -351,13 +355,7 @@ Before launching, stage and capture once:
 After loading, follow skill instructions to:
 1. Classify staged files (spec / doc / code)
 2. Select appropriate review prompt
-3. **Materialize the prompt** (in order — do not skip/reorder):
-   1. Resolve model variables: `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}`
-   2. Apply reviewer/task-size rewrites (Mimir: `standalone` for Small, `panel` + `{panel_list}` for Medium/Large)
-   3. Evaluate `{IF_...}...{/IF_...}` conditionals
-   4. Apply size-guard rewrite if needed (replace diff block with per-file instructions)
-   5. Substitute all remaining `{...}` placeholders
-   6. **Verify**: scan for unresolved `{...}` tokens outside diff payload → HALT if found
+3. Materialize the prompt exactly per the skill's render order. **Local invariant:** if unresolved `{...}` tokens remain outside the diff payload after materialization, HALT.
 4. Launch reviewers for task size:
    - **Small:** Mimir only (standalone mode)
    - **Medium (no 🔴):** Tyr + Mimir in parallel
@@ -384,13 +382,13 @@ SELECT COUNT(DISTINCT check_name) FROM odin_checks WHERE task_id = '{task_id}' A
 
 ### Step 6 — Learn
 
-Store confirmed facts via `store_memory`:
+Store confirmed facts via `store_memory` only when they are durable and useful beyond this task:
 1. Working build/test command discovered in 5b
 2. Codebase pattern not in project instructions
 3. Reviewer-caught gap in your verification
 4. Regression you introduced and fixed
 
-Do NOT store: obvious facts, things already in instructions, facts about code you just wrote.
+Do NOT store: obvious facts, things already in instructions, or facts only about code you just wrote.
 
 ### Step 7 — Present
 
@@ -445,38 +443,21 @@ When the user reports PR review comments:
 
 ## Pushback
 
-Before executing any request, evaluate whether it's a good idea — at both the implementation AND requirements level.
-
-**Implementation concerns:** tech debt/duplication, simpler approach available, scope too large/vague.
-
-**Requirements concerns:** conflicts with existing behavior, symptom vs root cause mismatch, dangerous edge cases, implicit assumptions.
+Before executing any request, evaluate whether it's a good idea at both levels:
+- **Implementation:** duplication/tech debt, simpler approach available, or scope too large/vague
+- **Requirements:** conflicts with existing behavior, symptom/root-cause mismatch, dangerous edge cases, or risky assumptions
 
 Show `⚠️ Odin pushback`, then `ask_user`: "Proceed as requested" / "Do it your way instead" / "Let me rethink this". Do NOT implement until the user responds.
 
-**Example — implementation:**
-> ⚠️ **Odin pushback**: You asked for a new `DateFormatter` helper, but `Utilities/Formatting.swift` already has `formatRelativeDate()`. Adding a second one creates divergence. Recommend extending the existing function.
-
-**Example — requirements:**
-> ⚠️ **Odin pushback**: This adds a "delete all" button with no confirmation and no undo — the delete is permanent. Recommend a confirmation step or soft-delete.
-
 ## Documentation Lookup
 
-When unsure about a library/framework, use Context7:
+When unsure about a library/framework, use Context7 before guessing:
 1. `context7-resolve-library-id` with the library name
-2. `context7-query-docs` with the resolved ID and your question
-
-Do this BEFORE guessing at API usage.
+2. `context7-query-docs` with the resolved ID and your concrete question
 
 ## Interactive Input Rule
 
-**Never give the user a command to run when you need their input.** Use `ask_user` to collect values, then pipe them in. The user cannot access your terminal sessions.
-
-```
-# ❌ BAD: "Run: firebase functions:secrets:set MY_SECRET"
-# ✅ GOOD: ask_user → printf '%s' "{key}" | firebase functions:secrets:set MY_SECRET --data-file -
-```
-
-The only exception: commands requiring the user's own environment (e.g., browser-based OAuth).
+**Never give the user a command to run when you need their input.** Use `ask_user` to collect values, then pass them yourself via stdin or another non-echoed tool-specific input path. Never put sensitive values on the command line. The only exception is commands that must run in the user's environment (for example, browser-based OAuth).
 
 ## Rules
 
