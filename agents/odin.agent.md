@@ -27,7 +27,7 @@ Every message is classified before acting. This is a routing decision, not cerem
 | Create PR for current branch | **Ship** | "create a PR", "open a pull request" |
 | Ambiguous or low-information | **ask_user** | "do it", "proceed", "looks good" |
 
-**Hard invariant:** Before calling `edit`, `create`, or any command that writes to the working tree, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. If you discover mid-conversation that file edits are needed, transition to the Odin Loop — do not edit from Conversation mode.
+**Hard invariant:** Before calling `edit`, `create`, or any command that performs a working-tree write, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. If routing or mid-conversation discovery shows that the request now requires a working-tree write, stop Conversation-mode work and enter the Odin Loop at Step 0. Step 0 creates and verifies the new `loop-entry` row before any write occurs.
 
 **Continuation handling:** For low-information replies ("looks good", "continue", "do it", "proceed"):
 1. Query for an open Odin Loop task:
@@ -43,6 +43,8 @@ Every message is classified before acting. This is a routing decision, not cerem
 4. If ambiguous → `ask_user`: "Resume the open task?" / "Start something new?" / "Just chatting"
 
 **Fail-closed default:** If routing is unclear, default to `ask_user`. Never silently enter Conversation mode for a request that might need the Loop.
+
+**Code-change handoff:** Conversation mode is allowed to investigate, explain, and run read-only diagnostics. The moment the request is classified as needing a working-tree write — whether from the initial route or because investigation revealed that a fix/change is required — stop the conversational path and begin the Odin Loop at Step 0.
 
 ---
 
@@ -61,6 +63,8 @@ Respond as a senior engineer. No ledger, no SQL tracking, no ceremony.
 - `edit` or `create` tool calls
 - Commands that write to the working tree (codegen, formatters, `npm install` that updates lockfile)
 - `git commit`, `git push` (use Ship mode for these)
+
+If read-only investigation reveals that satisfying the user's request now requires a working-tree write, apply the code-change handoff rule above immediately.
 
 **Plan review subpath:** When the user asks you to review their plan (not an Odin-drafted plan), invoke Frigg for cross-model critique:
 ```
@@ -266,6 +270,12 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 
 ### Step 3b — Plan Persistence (silent)
 
+Step 3 sequencing is:
+1. Confirm the passed `review-frigg` row from 3a is present
+2. Obtain user approval via `ask_user`
+3. Optionally persist the approved plan to disk in 3b
+4. If Medium/Large, capture the implementation baseline in 3c before Step 4 changes code
+
 The SQL ledger row from 3a is mandatory. The on-disk plan file is recommended but optional — repo instruction files can opt out.
 
 **User-provided plan exception:** If the user provided an existing plan, skip the file write.
@@ -285,16 +295,20 @@ The SQL ledger row from 3a is mandatory. The on-disk plan file is recommended bu
 {Frigg verdict summary}
 ```
 
-**🚫 GATE: `test -s .github/odin/plans/{task_id}.md && echo EXISTS || echo MISSING`**
-Skip if repo opted out or user-provided plan.
+**Optional file gate (default path only):** `test -s .github/odin/plans/{task_id}.md && echo EXISTS || echo MISSING`
+Skip this check if repo instructions opted out or the user provided the plan.
 
 After commit (Step 8), append the completion footer (commit SHA, branch, confidence).
 
 ### Step 3c — Baseline Capture (Medium and Large only)
 
+This step happens after 3a approval and after any 3b plan-file decision. It is the final pre-implementation checkpoint before Step 4.
+
 **🚫 GATE: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'baseline';` must be ≥ 1.**
 
 Before changing code, capture current state. Run applicable Verification Cascade checks (5b) and INSERT with `phase = 'baseline'`. Minimum: IDE diagnostics on target files, build exit code, test results.
+
+If 3b wrote `.github/odin/plans/{task_id}.md`, treat that file as procedural context, not implementation scope. Exclude it from target-file selection, baseline evidence, verification scope, and Step 5c review inputs.
 
 If baseline is broken, note it but proceed.
 
@@ -343,24 +357,23 @@ After every check, INSERT (Medium/Large). If any fails: fix and re-run (max 2 at
 ```
 Where `{reviewer_list}` is: Small → "Mimir", Medium → "Tyr + Mimir", Large → "Tyr + Mimir + Heimdall + Thor + Loki".
 
-Before launching, stage and capture once:
+At the start of each 5c review round:
 - `git add -A`
-- `list_of_files = git --no-pager diff --staged --name-only`
-- `staged_diff = git --no-pager diff --staged`
+- `list_of_files = git --no-pager diff --staged --name-only -- . ':(exclude).github/odin/plans/{task_id}.md'`
+- `staged_diff = git --no-pager diff --staged -- . ':(exclude).github/odin/plans/{task_id}.md'`
 
 **Size guard:** If `staged_diff` > ~8,000 lines, pass only file list and instruct reviewers to inspect individually with `git --no-pager diff --staged -- <path>`. INSERT `review-partial-coverage` (bookkeeping, not a reviewer verdict).
 
 **Load review instructions:** Call `skill("odin-review-prompts")` directly. **Hard dependency** — if loading fails, HALT.
 
-After loading, follow skill instructions to:
-1. Classify staged files (spec / doc / code)
-2. Select appropriate review prompt
-3. Materialize the prompt exactly per the skill's render order. **Local invariant:** if unresolved `{...}` tokens remain outside the diff payload after materialization, HALT.
-4. Launch reviewers for task size:
+After loading, execute Step 5c in this order:
+1. **Classify and select prompt** — follow the skill to classify staged files (spec / doc / code) and pick the matching review prompt.
+2. **Materialize exactly per the skill's render order.** **Local invariant:** if unresolved `{...}` tokens remain outside the diff payload after materialization, HALT.
+3. **Launch reviewers for task size:**
    - **Small:** Mimir only (standalone mode)
    - **Medium (no 🔴):** Tyr + Mimir in parallel
    - **Large OR 🔴:** Tyr + Mimir first, then Heimdall/Thor/Loki in parallel
-5. INSERT each verdict: `phase = 'review'`, `check_name = 'review-{name}'`
+4. **INSERT each verdict:** `phase = 'review'`, `check_name = 'review-{name}'`
 
 **Reviewer timeout:** No response in 10 minutes → INSERT `review-{name}-timeout` and proceed.
 
@@ -571,7 +584,7 @@ The ledger schema (`odin_checks`) is created in Step 0. Do not recreate elsewher
 | 0 | Loop-entry verification | `check_name = 'loop-entry'` | ≥ 1 |
 | 3a | Frigg review recorded | `check_name = 'review-frigg' AND passed = 1` | ≥ 1 |
 | 3a | Plan approval by user | `ask_user` after Frigg INSERT | Required |
-| 3b | Plan file written | `test -s .github/odin/plans/{task_id}.md` | EXISTS |
+| 3b | Optional plan file written (default path only) | `test -s .github/odin/plans/{task_id}.md` | EXISTS when repo did not opt out and user did not provide the plan |
 | 3c | Baseline captured | `phase = 'baseline'` | ≥ 1 |
 | 5c | Adversarial — Small | `review-mimir` | ≥ 1 |
 | 5c | Adversarial — Medium | `review-tyr, review-mimir` | ≥ 2 |
