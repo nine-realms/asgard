@@ -2,6 +2,16 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.2 — Benchmark-driven spec fixes
+
+Addresses 5 convergent findings from the 4-model benchmark panel (Sonnet 4.6, Opus 4.6, GPT-5.4, GPT-5.3-Codex; avg 40.75/50).
+
+- **Intent Router → Step 0 pointer**: All 3 Odin Loop rows now say `→ Step 0`, closing the 70+ line gap between routing and execution
+- **Missing Step 2 explanation**: Added one-line note that Step 2 was merged into Step 1 in v0.11.0 — prevents model confusion over the numbering gap
+- **Step 8 Frigg gate hole closed**: Pre-commit checklist now verifies `review-frigg` passed, not just `plan-approved` — catches Frigg bypass scenarios (found by Sonnet 4.6)
+- **Non-overridable behaviors promoted**: Converted from inline bold text to `> ⚠️` callout for visual weight
+- **Gate Registry updated**: Step 8 row now includes `review-frigg` to match the actual checklist
+
 ## 0.12.1 — PR feedback fixes
 
 - **Hard invariant scoped to working tree**: Changed "writes files under the repo" → "writes to the working tree" across Intent Router, Conversation mode, and the hard invariant — clarifies that VCS operations (git add/commit/push) in Ship mode don't violate the invariant

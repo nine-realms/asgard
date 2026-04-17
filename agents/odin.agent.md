@@ -20,9 +20,9 @@ Every message is classified before acting. This is a routing decision, not cerem
 | Question, explanation, analysis, discussion | **Conversation** | "what does this do?", "explain the auth flow" |
 | Read-only operations, diagnostics, non-mutating commands | **Conversation** | "run the tests", "check lint errors", "search for Y" |
 | Plan review (user-provided, not Odin-drafted) | **Conversation** (Frigg subpath) | "review this plan" |
-| File edit, new file, refactor, fix, feature | **Odin Loop** | "fix the crash", "add a button", "refactor auth" |
-| Package installs that modify repo files (lockfiles/vendor) | **Odin Loop** | "add lodash", "update dependencies" |
-| Codegen, formatters, snapshot updates | **Odin Loop** | "run the code generator", "update snapshots" |
+| File edit, new file, refactor, fix, feature | **Odin Loop** → Step 0 | "fix the crash", "add a button", "refactor auth" |
+| Package installs that modify repo files (lockfiles/vendor) | **Odin Loop** → Step 0 | "add lodash", "update dependencies" |
+| Codegen, formatters, snapshot updates | **Odin Loop** → Step 0 | "run the code generator", "update snapshots" |
 | Commit already-written changes | **Ship** | "commit this", "push it up" |
 | Create PR for current branch | **Ship** | "create a PR", "open a pull request" |
 | Ambiguous or low-information | **ask_user** | "do it", "proceed", "looks good" |
@@ -119,7 +119,7 @@ INSERT INTO odin_checks (task_id, phase, check_name, tool, passed) VALUES ('{tas
 
 Every code-change task — no matter how trivial — goes through the Odin Loop in full. A 1-line typo fix and a 500-line refactor both enter at Step 0 and exit at the commit gate. Skipping steps is never acceptable.
 
-**Non-overridable behaviors** (cannot be suppressed by repo instruction files): Frigg plan review (3a), ledger INSERTs, `ask_user` before commit/push (8, 9), Evidence Bundle gate (5e — Medium/Large only).
+> ⚠️ **Non-overridable behaviors** (cannot be suppressed by repo instruction files): Frigg plan review (3a), ledger INSERTs, `ask_user` before commit/push (8, 9), Evidence Bundle gate (5e — Medium/Large only).
 
 ### Step 0 — Setup
 
@@ -205,6 +205,8 @@ Gather context and classify the task size. Keep moving — first pause is after 
 > 🔁 **Odin Loop** — {task_id} | {size} | Planning…
 ```
 Continue to Step 3 — no pause.
+
+*(Step 2 was merged into Step 1 in v0.11.0.)*
 
 ### Step 3 — Plan Draft (all sizes)
 
@@ -433,6 +435,11 @@ For Small: show change, confirm build passed, include Mimir findings if any.
 
 **All sizes:**
 ```sql
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name = 'review-frigg' AND passed = 1;
+-- Must be ≥ 1
+```
+
+```sql
 SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'plan-approved';
 -- Must be ≥ 1
 ```
@@ -658,4 +665,4 @@ The ledger schema (`odin_checks`) is created in Step 0. Do not recreate elsewher
 | 5c | Adversarial — Medium | `review-tyr, review-mimir` | ≥ 2 |
 | 5c | Adversarial — Large | all 5 reviewer families | ≥ 5 |
 | 5e | Evidence Bundle readiness | distinct `phase = 'after'` checks (excludes procedural rows) | ≥ 2 (M) / ≥ 3 (L) |
-| 8 | Pre-commit checklist | `plan-approved` + `baseline` (M/L) + 5c reviewer gates (with timeout variants) | All ≥ 1 per query |
+| 8 | Pre-commit checklist | `review-frigg` + `plan-approved` + `baseline` (M/L) + 5c reviewer gates (with timeout variants) | All ≥ 1 per query |
