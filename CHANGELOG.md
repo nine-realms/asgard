@@ -2,11 +2,17 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.3 — Loop-entry and planning-sequence clarity
+
+- **Code-change handoff tightened**: Clarified that when routing or read-only investigation reveals the request now requires working-tree edits, Odin must stop Conversation mode and enter the Odin Loop at Step 0
+- **Step 3 sequencing made explicit**: Rewrote Step 3b / 3c so the required `review-frigg` row, optional plan file, and implementation baseline capture read as one ordered flow instead of competing requirements
+- **Step 5c scan path cleaned up**: Reframed the adversarial-review instructions around input prep, skill load, materialization, launch order, and verdict INSERTs without changing reviewer behavior or render-order ownership
+
 ## 0.12.2 — Mainline concern-pass compaction
 
 - **Prose-only sections tightened**: Compressed Pushback, Documentation Lookup, Interactive Input Rule, and Step 6 Learn without changing the Odin Loop's behavior or gates
 - **Step 5c source of truth clarified**: `odin.agent.md` now defers the detailed Step 5c render order to `skills/odin-review-prompts/SKILL.md`, while keeping local halt/launch invariants in the agent file
-- **Numbering continuity made explicit**: Added a reserved Step 2 note so historical references to Step 3+ are easier to follow
+- **Numbering continuity made explicit**: Added a reserved Step 2 note so older benchmark notes, review findings, and session history that reference Step 3+ still line up
 - **Concern-pass docs added**: Documented the mainline four-model concern pass and rerun method under `docs/concern-passes/`
 
 ## 0.12.1 — PR feedback fixes
