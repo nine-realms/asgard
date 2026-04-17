@@ -566,19 +566,9 @@ The only exception: commands requiring the user's own environment (e.g., browser
 
 ## Subagent Strategy
 
-Subagents are stateless — give complete context every time.
+Subagents are stateless — give complete context every time. Batch don't chain. Parallelize independent work. Use `task` for noisy commands (builds/tests/lints — success/fail only). Reviewers report — you fix (never ask a reviewer to apply changes). Frigg reviews plans, not code.
 
-| Agent | Use When | Anti-pattern |
-|-------|----------|--------------|
-| `explore` | Understand code, find patterns, trace relationships. Batch questions or launch in parallel. | Don't re-search files it already reported. |
-| `task` | Builds, tests, lints — success/fail only. Keeps context clean. | Don't use for reasoning or multi-step decisions. |
-| `asgard:tyr` | Convention-focused adversarial review in Step 5c (Medium/Large). | Don't ask reviewers to fix code — they report, you fix. |
-| `asgard:mimir` | Heuristic pre-screening in Step 5c (all sizes). Solo on Small, paired with Tyr on Medium/Large. | Don't skip on Small — Mimir is the only reviewer. |
-| `asgard:frigg` | Cross-model plan review in Step 3a (all sizes). Always a different model family. | Don't use for code review — Frigg reviews plans. |
-| `code-review` | Multi-model review in Step 5c (Large): Heimdall, Thor, Loki. | Don't ask reviewers to fix code. |
-| `general-purpose` | Complex independent subtasks needing full tools + reasoning. | Don't use for simple tasks `explore` or `task` can handle. |
-
-**Principles:** Batch don't chain. Parallelize independent work. Give complete context. Use `task` for noisy commands.
+Agent details: `explore` (search/trace — don't re-search files it already reported), `task` (success/fail only — not for reasoning), `general-purpose` (complex subtasks needing full tools). For `asgard:frigg`, `asgard:tyr`, `asgard:mimir`, and `code-review` (Heimdall/Thor/Loki), see Steps 3a and 5c.
 
 ## Skills Awareness
 
@@ -617,24 +607,7 @@ Then stop. Do not proceed.
 
 If unsure between sizes, treat as Medium.
 
-**Step routing by size:**
-
-| Step | Small | Medium | Large |
-|------|:---:|:---:|:---:|
-| 0 Setup | ✅ | ✅ | ✅ |
-| 1 Understand | ✅ | ✅ | ✅ |
-| 3 Plan + 3a Frigg | ✅ | ✅ | ✅ |
-| 3b Plan File | ✅ | ✅ | ✅ |
-| 3c Baseline | — | ✅ | ✅ |
-| 4 Implement | ✅ | ✅ | ✅ |
-| 5a-5b Verify | ✅ (no ledger) | ✅ | ✅ |
-| 5c Adversarial Review | Mimir | Tyr+Mimir | Tyr+Mimir+H/T/L |
-| 5d Operational Readiness | — | — | ✅ |
-| 5e Evidence Bundle | — | ✅ | ✅ |
-| 6 Learn | build cmd only | ✅ | ✅ |
-| 7 Present | ✅ | ✅ | ✅ |
-| 8 Commit | ✅ | ✅ | ✅ |
-| 9 Push & PR | ✅ | ✅ | ✅ |
+**Size exceptions (all other steps run for all sizes):** Small skips 3c (baseline), 5d (operational readiness), 5e (evidence bundle), and ledger INSERTs in 5a-5b. Medium skips 5d. Adversarial reviewers: Small → Mimir only, Medium → Tyr+Mimir, Large → all 5. Step 6 (Learn): Small stores build commands only.
 
 **Risk per file:**
 - 🟢 Additive changes, new tests, documentation, config, comments

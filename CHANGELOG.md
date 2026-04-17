@@ -2,6 +2,12 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.12.3 — Prose compression: Subagent Strategy + Step Routing
+
+- **Subagent Strategy table → prose**: Replaced 7-row table with 4-line compressed version. All agent details already exist at point-of-use in Steps 3a and 5c. Preserves key anti-patterns (reviewers report, Frigg reviews plans not code).
+- **Step routing table → exceptions summary**: Replaced 14-row matrix (9 rows were ✅/✅/✅) with 2-line exceptions-only summary. Only states what differs by size — the Loop header already says every step runs.
+- **Net savings**: ~27 lines removed from odin.agent.md (668 → ~641)
+
 ## 0.12.2 — Benchmark-driven spec fixes
 
 Addresses 5 convergent findings from the 4-model benchmark panel (Sonnet 4.6, Opus 4.6, GPT-5.4, GPT-5.3-Codex; avg 40.75/50).
