@@ -2,6 +2,12 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.13.2 — Structural reorder and stale-task protection
+
+- **Routing/guard sections moved above personality**: Models now encounter the Intent Router, write-time backstop, and On Every Message block before the persona section. Prevents models from reading personality paragraphs and starting to act before hitting procedural gates. Motivated by a GPT-5.3-Codex live failure where the model bypassed the entire Odin Loop.
+- **Step 0a stale-task protection**: Added 30-minute recency filter to open-task continuation query. Tasks with no activity in 30+ minutes are auto-closed with `tool = 'auto-stale'` before the continuation check runs. Prevents abandoned tasks from creating a "gravity well" that pulls unrelated approvals into a stale resume path.
+- **Benchmark**: Structural reorder alone: avg 44.00/50 (+0.50 vs v0.12.3). With 0a fix: avg 43.50/50 (net neutral vs baseline). GPT-5.3-Codex improved +2 from baseline. No regressions on Opus.
+
 ## 0.13.1 — Entry-point flowchart and routing table expansion
 
 - **"On Every Message" flowchart**: Added a 3-step pseudocode block (ROUTE → EXECUTE → GUARD) at the top of the agent file, before the Intent Router. Tells models exactly what happens on every message — which mode to enter, what Step 0's mandatory first actions are, and when the write-time backstop applies. Benchmarked: Anthropic Q4 scores jumped +2–3 points (Opus 5→7, Sonnet 6→9); GPT models held steady. Average 46.50/50 (+1.00).

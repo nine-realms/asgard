@@ -164,7 +164,25 @@ CREATE TABLE IF NOT EXISTS odin_checks (
 **0a. Continuation check (low-information or ambiguous entry only):**
 If the router sent this message to Step 0 via a low-information approval (not a direct code-change request), check for an open task before minting a fresh `task_id`:
 
-1. Query for the latest **incomplete** task (one with `loop-entry` but no `task-complete`):
+1. Auto-close stale tasks (no activity for 30+ minutes) so they don't block fresh work:
+    ```sql
+    INSERT INTO odin_checks (task_id, phase, check_name, tool, command, passed)
+    SELECT le.task_id, 'after', 'task-complete', 'auto-stale',
+           'No activity for 30+ minutes', 1
+    FROM odin_checks le
+    WHERE le.check_name = 'loop-entry'
+      AND NOT EXISTS (
+        SELECT 1 FROM odin_checks tc
+        WHERE tc.task_id = le.task_id AND tc.check_name = 'task-complete'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM odin_checks recent
+        WHERE recent.task_id = le.task_id
+          AND recent.ts >= datetime('now', '-30 minutes')
+      );
+    ```
+
+2. Query for the latest **incomplete, recent** task (one with `loop-entry` but no `task-complete`, and activity within the last 30 minutes):
     ```sql
     SELECT le.task_id AS open_task_id
     FROM odin_checks le
@@ -173,10 +191,15 @@ If the router sent this message to Step 0 via a low-information approval (not a 
         SELECT 1 FROM odin_checks tc
         WHERE tc.task_id = le.task_id AND tc.check_name = 'task-complete'
       )
+      AND EXISTS (
+        SELECT 1 FROM odin_checks recent
+        WHERE recent.task_id = le.task_id
+          AND recent.ts >= datetime('now', '-30 minutes')
+      )
     ORDER BY le.ts DESC, le.id DESC
     LIMIT 1;
     ```
-2. **Open task found** →
+3. **Open task found** (recent activity) →
    - Reply clearly refers to the open task → **Resume path**: bind `{task_id} = {open_task_id}`, verify the existing `loop-entry` row:
      ```sql
      SELECT COUNT(*) FROM odin_checks WHERE task_id = '{open_task_id}' AND check_name = 'loop-entry';
@@ -184,7 +207,7 @@ If the router sent this message to Step 0 via a low-information approval (not a 
      Require result ≥ 1 before continuing. Then query progress (`SELECT phase, check_name FROM odin_checks WHERE task_id = '{open_task_id}' ORDER BY ts, id;`) and jump to the earliest incomplete step. Emit `> 🔁 **Odin Loop** — {open_task_id} | Resuming open task…` — skip the rest of Step 0.
    - The immediately preceding assistant turn scoped a *different* code change and the reply approves it → `ask_user`: "Resume `{open_task_id}`?" / "Start the newly approved task?" / "Just chatting"
    - Unclear → `ask_user` with the same choices.
-3. **No open task found** →
+4. **No open task found** →
    - If the immediately preceding assistant turn scoped a code change and the reply approves it → fall through to **Fresh path** below.
    - Otherwise the reply is a conversational acknowledgment — exit Step 0 and respond naturally in Conversation mode.
 
