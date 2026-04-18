@@ -14,6 +14,9 @@ Heuristic pre-screening code reviewer. Catches common PR review findings before 
 ### Tyr (`asgard:tyr`)
 Adversarial but constructive code reviewer. Rigorously challenges code changes against readability, simplicity, and maintainability standards. Every criticism includes a concrete suggestion or rewritten example.
 
+### Surtr (`asgard:surtr`) *(experimental)*
+Ultra-compact caveman-speak variant of Odin. Same gates and SQL ledger (`odin_checks` — cross-agent task resume works), same skills (stolen, not duplicated), ~38% fewer lines. Exists to benchmark whether terse imperatives match Odin's compliance score at lower token cost. No plan file persistence, no PR feedback re-entry.
+
 ## Skills
 
 ### `odin-review-prompts`

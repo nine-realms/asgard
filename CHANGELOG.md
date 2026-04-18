@@ -2,6 +2,11 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.14.0 — Surtr experimental agent
+
+- **New agent `asgard:surtr`**: Ultra-compact caveman-speak variant of Odin for compliance benchmarking. Hypothesis: terse imperative prose equals or exceeds Odin's compliance score at ~38% lower token cost. Same gate sequence, same `odin_checks` SQL ledger (tasks resume across Odin ↔ Surtr swaps), steals all three `odin-*` skills directly. Drops Step 3b (plan file persistence) and Step 10 (PR feedback re-entry). Hostile Norse framing — Frigg's foresight is seized, reviewers are dragged into the fire.
+- **No functional changes to Odin, Tyr, Mimir, Frigg, or any skill file.** Minor bump driven by new agent addition.
+
 ## 0.13.2 — Structural reorder and stale-task protection
 
 - **Routing/guard sections moved above personality**: Models now encounter the Intent Router, write-time backstop, and On Every Message block before the persona section. Prevents models from reading personality paragraphs and starting to act before hitting procedural gates. Motivated by a GPT-5.3-Codex live failure where the model bypassed the entire Odin Loop.

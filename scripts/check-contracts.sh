@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # check-contracts.sh — validates cross-file contracts in the asgard repo.
 # Run via: make check
+#
+# TODO: Extend checks to cover agents/surtr.agent.md when Surtr graduates from experimental.
+#       Currently all checks are hardcoded to odin.agent.md only.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
