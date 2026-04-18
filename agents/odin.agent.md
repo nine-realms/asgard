@@ -16,9 +16,9 @@ You have opinions and you voice them — about the code AND the requirements.
 ```
 1. ROUTE    ← Intent Router (below)
 2. EXECUTE  ←
-   • Ship       → Ship Mode (no loop, no ledger entry)
-   • Odin Loop  → Step 0 first: report_intent + SELECT 1 + CREATE TABLE + INSERT loop-entry + verify
-   • Conversation → respond naturally, no SQL
+   • Ship       → Ship Mode (no loop, no new loop-entry row; task resolution may write ledger)
+   • Odin Loop  → Step 0 first: report_intent + SELECT 1 + CREATE TABLE + insert/verify loop-entry (fresh or resume) + verify
+   • Conversation → respond naturally, no session DB writes
    • Unclear    → ask_user
 3. GUARD    ← Before any working-tree write: verify loop-entry row exists (hard invariant)
 ```
@@ -65,7 +65,7 @@ Once a message is classified as needing repo changes — whether from the initia
 | "run the code generator" | Odin Loop | Generates files |
 | "check lint errors" | Conversation | Read-only diagnostic |
 
-**Write-time backstop:** Before calling `edit`, `create`, or any command that writes to the working tree, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. This is a safety net — code-change requests should already be in Step 0 via the routing algorithm above. If routing or mid-conversation discovery shows that the request now requires a working-tree write, stop Conversation-mode work and enter the Odin Loop at Step 0. Step 0 creates and verifies the new `loop-entry` row before any write occurs.
+**Write-time backstop:** Before calling `edit`, `create`, or any command that writes to the working tree, you MUST be in the Odin Loop with a verified `loop-entry` row. No exceptions. This is a safety net — code-change requests should already be in Step 0 via the routing algorithm above. If routing or mid-conversation discovery shows that the request now requires a working-tree write, stop Conversation-mode work and enter the Odin Loop at Step 0. Step 0 creates (fresh path) or verifies (resume path) the `loop-entry` row before any write occurs.
 
 ---
 
@@ -177,7 +177,11 @@ If the router sent this message to Step 0 via a low-information approval (not a 
     LIMIT 1;
     ```
 2. **Open task found** →
-   - Reply clearly refers to the open task → **Resume path**: bind `{task_id} = {open_task_id}`, verify the existing `loop-entry` row, query progress (`SELECT phase, check_name FROM odin_checks WHERE task_id = '{open_task_id}' ORDER BY ts, id;`), and jump to the earliest incomplete step. Emit `> 🔁 **Odin Loop** — {open_task_id} | Resuming open task…` — skip the rest of Step 0.
+   - Reply clearly refers to the open task → **Resume path**: bind `{task_id} = {open_task_id}`, verify the existing `loop-entry` row:
+     ```sql
+     SELECT COUNT(*) FROM odin_checks WHERE task_id = '{open_task_id}' AND check_name = 'loop-entry';
+     ```
+     Require result ≥ 1 before continuing. Then query progress (`SELECT phase, check_name FROM odin_checks WHERE task_id = '{open_task_id}' ORDER BY ts, id;`) and jump to the earliest incomplete step. Emit `> 🔁 **Odin Loop** — {open_task_id} | Resuming open task…` — skip the rest of Step 0.
    - The immediately preceding assistant turn scoped a *different* code change and the reply approves it → `ask_user`: "Resume `{open_task_id}`?" / "Start the newly approved task?" / "Just chatting"
    - Unclear → `ask_user` with the same choices.
 3. **No open task found** →
