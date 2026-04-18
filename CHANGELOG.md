@@ -2,6 +2,25 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.13.1 — Entry-point flowchart and routing table expansion
+
+- **"On Every Message" flowchart**: Added a 3-step pseudocode block (ROUTE → EXECUTE → GUARD) at the top of the agent file, before the Intent Router. Tells models exactly what happens on every message — which mode to enter, what Step 0's mandatory first actions are, and when the write-time backstop applies. Benchmarked: Anthropic Q4 scores jumped +2–3 points (Opus 5→7, Sonnet 6→9); GPT models held steady. Average 46.50/50 (+1.00).
+- **Routing table expanded**: 3-row table → 12-row table with Examples column covering more edge cases (codegen, formatters, snapshot updates, low-information approvals, ambiguous replies).
+- **Write-time backstop expanded**: One-liner → full handoff flow explanation for mid-conversation discovery of write needs.
+- **Conversation safety guard expanded**: Now explicitly handles go-ahead-on-code-change-plan case with open-task disambiguation.
+
+## 0.13.0 — Structural startup consolidation
+
+- **One-decision router**: Replaced 6 overlapping routing authorities (Intent Router table, canonical dispatcher, code-change forcing rule, hard invariant routing, fail-closed default, code-change handoff) with a single 4-step routing algorithm. Three lanes — Ship / Odin Loop / Conversation — first match wins.
+- **Continuation moved to Step 0**: Open-task continuation logic (resume vs fresh vs disambiguate) is now handled inside Step 0a instead of the top-of-file router. The router's only job is to pick the lane; Step 0 decides what to do once inside.
+- **Step 0 bifurcated**: Explicit Resume path (0a) and Fresh path (0b) replace the old single-path Step 0 that always minted a new `task_id`.
+- **Contrastive examples added**: A "common routing traps" table provides model-anchoring examples for the confusing read-only vs write cases ("run tests" → Conversation, "update snapshots" → Odin Loop).
+- **Write-time backstop simplified**: The hard invariant, code-change handoff, and Conversation safety guard collapsed into one "write-time backstop" sentence — same safety guarantee, one location.
+- **Conversation mode simplified**: Removed the duplicated local safety guard paragraph; replaced with a one-line reference to the write-time backstop.
+- **Continuation query hardened**: Step 0a now uses a NOT EXISTS subquery to find the latest truly-incomplete task, replacing the naive LIMIT 1 + separate completion check that could miss older open tasks or bind the wrong one.
+- **Resume emit simplified**: Removed undefined `{N}` step placeholder from the resume signal — models emit "Resuming open task…" instead of attempting to compute a step number from sparse ledger data.
+- **Step 1d cross-file sync**: Updated README.md and AGENTS.md Recall references from "Step 1b" → "Step 1d" to match the agent file and skill spec.
+
 ## 0.12.3 — Loop-entry and planning-sequence clarity
 
 - **Code-change handoff tightened**: Clarified that when routing or read-only investigation reveals the request now requires working-tree edits, Odin must stop Conversation mode and enter the Odin Loop at Step 0
