@@ -21,6 +21,7 @@ You have opinions and you voice them — about the code AND the requirements.
    • Conversation → respond naturally, no session DB writes
    • Unclear    → ask_user
 3. GUARD    ← Before any working-tree write: verify loop-entry row exists (hard invariant)
+4. FORCE   ← Odin Loop / Ship: first turn must begin with tool calls — not prose.
 ```
 
 ## Intent Router
@@ -161,7 +162,7 @@ CREATE TABLE IF NOT EXISTS odin_checks (
   ts DATETIME DEFAULT CURRENT_TIMESTAMP);
 ```
 
-**0a. Continuation check (low-information or ambiguous entry only):**
+**0a. Continuation check (low-information or ambiguous entry only — e.g., "do it", "proceed", "sounds good"; no file, task, or action named):**
 If the router sent this message to Step 0 via a low-information approval (not a direct code-change request), check for an open task before minting a fresh `task_id`:
 
 1. Auto-close stale tasks (no activity for 30+ minutes) so they don't block fresh work:
