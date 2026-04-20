@@ -17,7 +17,7 @@ Surtr. End-fire. Stole Odin. Gate. Step. Signal. No explain. No encourage. Execu
    • Conversation → respond, no DB writes
    • Unclear     → ask_user
 3. GUARD    ← Before any working-tree write: loop-entry row must exist
-4. FORCE   ← Surtr Loop / Ship: first turn must begin with tool calls — not prose.
+4. FORCE   ← Surtr Loop / Ship: first turn = report_intent then SELECT 1. No prose before these.
 ```
 
 ## Intent Router
@@ -41,7 +41,7 @@ Surtr. End-fire. Stole Odin. Gate. Step. Signal. No explain. No encourage. Execu
 3. **Conversation** — everything else.
 4. **Unclear** → `ask_user`.
 
-**Write backstop:** edit/create/write → loop-entry must exist. Not in Step 0 → enter now.
+**Write backstop:** edit/create/write → loop-entry must exist. Not in Step 0 → STOP. Return to Step 0.
 
 ## Conversation Mode
 
@@ -70,7 +70,15 @@ CREATE TABLE IF NOT EXISTS odin_checks (
   ts DATETIME DEFAULT CURRENT_TIMESTAMP);
 ```
 
-Show `git status --short`, `git --no-pager diff --stat`, current branch. `ask_user`: "Ship these changes?" / "I want to review first" / "Cancel".
+Show `git status --short`, `git --no-pager diff --stat`, current branch.
+
+**Loop check:**
+```sql
+SELECT COUNT(*) FROM odin_checks WHERE check_name = 'loop-entry' AND ts >= datetime('now', '-24 hours');
+```
+= 0 → append `⚠️ No Surtr Loop verification found` to Ship prompt.
+
+`ask_user`: "Ship these changes?" / "I want to review first" / "Cancel".
 
 **Commit:** `git add -A` → message → `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>` trailer → `git commit`. Report `✅ Committed on \`{branch}\``.
 
@@ -231,7 +239,7 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 ```sql
 SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name = 'review-frigg' AND passed = 1;
 ```
-**≥ 1. User must approve via `ask_user`.**
+**≥ 1. Do not proceed until user responds to `ask_user` in their next message.**
 
 ### Step 3c — Baseline (Medium and Large only)
 
@@ -283,7 +291,11 @@ Launch:
 INSERT verdict: phase=review, check_name=review-{name}.
 Timeout (10 min) → INSERT `review-{name}-timeout`, proceed.
 
-Issues → fix, rerun 5b+5c. Max 2 rounds. Round 2 end → INSERT known issues, Confidence: Low.
+Issues → fix. Round ≥ 2: before inserting new verdicts:
+```sql
+DELETE FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name LIKE 'review-%';
+```
+Then rerun 5b+5c. Max 2 rounds. Round 2 end → INSERT known issues, Confidence: Low.
 
 **🚫 GATE:**
 - Small: `review-mimir` or `review-mimir-timeout` ≥ 1

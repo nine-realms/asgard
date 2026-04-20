@@ -2,7 +2,15 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
-## 0.14.1 — Surtr caveman prose compression
+## 0.14.2 — Surtr: 5 benchmark finding fixes
+
+- **FORCE rule tightened**: Changed "first turn must begin with tool calls" to specify `report_intent` then `SELECT 1` explicitly. Closes bypass where `report_intent` + `grep` satisfied the rule while skipping the runtime gate.
+- **Write backstop hardened**: "Not in Step 0 → enter now" (lazy entry) replaced with "Not in Step 0 → STOP. Return to Step 0." Closes path that allowed skipping 0c/1/3/3a.
+- **Ship Mode loop-entry warning**: Added `SELECT COUNT(*)` check for loop-entry rows before the Ship `ask_user`. Appends ⚠️ warning if no Surtr Loop verification found in last 24h.
+- **5c round-tracking fix**: Added `DELETE FROM odin_checks … check_name LIKE 'review-%'` before round 2 inserts. Prevents round-1 pass rows from satisfying the gate after round-2 failures.
+- **Frigg non-blocking clarified**: Gate text changed to "Do not proceed until user responds to `ask_user` in their next message." Removes ambiguity that allowed the LLM to continue after emitting `ask_user`.
+
+
 
 - **`agents/surtr.agent.md` prose compression**: Stripped all descriptive and rationale prose from Surtr, leaving only imperatives, SQL gates, and routing. ~30 surgical line edits across persona, Ship Mode, Steps 0–6, Skills, and Runtime Gate. All SQL blocks, gate thresholds, tables, signal lines, and placeholder tokens left byte-for-byte identical. Two Mimir findings applied: restored ledger CREATE TABLE before Ship Mode prompt; expanded `H/T/L` shorthand to `Heimdall/Thor/Loki`. `report_intent('Lævateinn rises')` retained (user-approved thematic string).
 
