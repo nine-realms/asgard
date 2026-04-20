@@ -26,6 +26,7 @@ Agents live in `agents/<name>.agent.md`. They follow the GitHub Copilot custom a
 | **Tyr** | `agents/tyr.agent.md` | Convention-focused adversarial reviewer. Challenges code against readability, simplicity, and maintainability. Every criticism includes a concrete fix. |
 | **Mimir** | `agents/mimir.agent.md` | Heuristic pre-screening reviewer. Structured 3-pass review (walkthrough → file-by-file → findings) with review effort scoring. Catches what automated PR reviewers would flag. |
 | **Frigg** | `agents/frigg.agent.md` | Plan reviewer. Reviews draft implementation plans before user approval — catches architectural blind spots, scope creep, and simpler alternatives. Spawned by Odin on a different model family for cross-model diversity. |
+| **Surtr** *(experimental)* | `agents/surtr.agent.md` | Ultra-compact caveman-speak variant of Odin. Same gates, same `odin_checks` SQL ledger (cross-agent task resume works), steals all odin-* skills. Exists to benchmark whether terse imperatives match Odin's compliance at lower token cost. Drops plan file persistence and PR feedback re-entry. |
 
 ### Adversarial Reviewers Without Agent Files (by design)
 

@@ -4,6 +4,8 @@ Stress-test harness for validating how different LLM models process agent instru
 
 For Mimir-specific benchmarks (review process, CCA integration, panel/standalone modes), see [`mimir/`](mimir/).
 
+For Surtr benchmarks (compliance comparison against Odin at ~37% token reduction), see [`surtr/`](surtr/).
+
 ## How to Run
 
 1. Open Copilot CLI in the asgard repo
@@ -58,6 +60,7 @@ Each benchmark run is saved as `results/YYYY-MM-DD-{label}.md`. Compare scores a
 
 | File | Purpose |
 |------|---------|
-| `simulation-prompt.md` | The exact prompt given to each model |
+| `simulation-prompt.md` | The exact prompt given to each model (Odin) |
+| `surtr/` | Surtr benchmark: simulation prompt, design notes, scorer guidance |
 | `scoring-rubric.md` | How to score responses (5 dimensions, 1-10 each) |
 | `results/` | Timestamped benchmark results |

@@ -2,6 +2,34 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.14.4 — Surtr: 4 benchmark finding fixes
+
+- **Section-jump sentinel**: Added `⚠️ ENTRY POINT` above On Every Message block — prevents LLM from scanning headers and jumping directly into The Surtr Loop.
+- **Conversation FORCE clarity**: Added "No `report_intent`. No DB writes." to Conversation Mode header — makes the deliberate asymmetry explicit.
+- **"Change approval" defined**: Inlined definition in Step 0a: `(low-info reply immediately following a code-change plan)` — eliminates the undefined term.
+- **Size escalation gate at Step 4**: Added 🔴 file discovered mid-impl → STOP, escalate to Large, return to 3a+3c. Closes the gap where Medium classification locked in at 1f but a 🔴 file appears during implementation.
+
+## 0.14.3 — Surtr: round-2 DELETE regression fix
+
+- **5c DELETE scope fix**: Round-2 review DELETE changed from `check_name LIKE 'review-%'` to an explicit IN list of the 10 reviewer check names. Prevents Frigg's `review-frigg` row (also `phase='review'`, also matches `review-%`) from being wiped before the Step 8 pre-commit gate re-checks it. Caught by claude-opus-4.6 in the v0.14.2 benchmark.
+
+## 0.14.2 — Surtr: 5 benchmark finding fixes
+
+- **FORCE rule tightened**: Changed "first turn must begin with tool calls" to specify `report_intent` then `SELECT 1` explicitly. Closes bypass where `report_intent` + `grep` satisfied the rule while skipping the runtime gate.
+- **Write backstop hardened**: "Not in Step 0 → enter now" (lazy entry) replaced with "Not in Step 0 → STOP. Return to Step 0." Closes path that allowed skipping 0c/1/3/3a.
+- **Ship Mode loop-entry warning**: Added `SELECT COUNT(*)` check for loop-entry rows before the Ship `ask_user`. Appends ⚠️ warning if no Surtr Loop verification found in last 24h.
+- **5c round-tracking fix**: Added `DELETE FROM odin_checks … check_name LIKE 'review-%'` before round 2 inserts. Prevents round-1 pass rows from satisfying the gate after round-2 failures.
+- **Frigg non-blocking clarified**: Gate text changed to "Do not proceed until user responds to `ask_user` in their next message." Removes ambiguity that allowed the LLM to continue after emitting `ask_user`.
+
+
+
+- **`agents/surtr.agent.md` prose compression**: Stripped all descriptive and rationale prose from Surtr, leaving only imperatives, SQL gates, and routing. ~30 surgical line edits across persona, Ship Mode, Steps 0–6, Skills, and Runtime Gate. All SQL blocks, gate thresholds, tables, signal lines, and placeholder tokens left byte-for-byte identical. Two Mimir findings applied: restored ledger CREATE TABLE before Ship Mode prompt; expanded `H/T/L` shorthand to `Heimdall/Thor/Loki`. `report_intent('Lævateinn rises')` retained (user-approved thematic string).
+
+## 0.14.0 — Surtr experimental agent
+
+- **New agent `asgard:surtr`**: Ultra-compact caveman-speak variant of Odin for compliance benchmarking. Hypothesis: terse imperative prose equals or exceeds Odin's compliance score at ~38% lower token cost. Same gate sequence, same `odin_checks` SQL ledger (tasks resume across Odin ↔ Surtr swaps), steals all three `odin-*` skills directly. Drops Step 3b (plan file persistence) and Step 10 (PR feedback re-entry). Hostile Norse framing — Frigg's foresight is seized, reviewers are dragged into the fire.
+- **No functional changes to Odin, Tyr, Mimir, Frigg, or any skill file.** Minor bump driven by new agent addition.
+
 ## 0.13.2 — Structural reorder and stale-task protection
 
 - **Routing/guard sections moved above personality**: Models now encounter the Intent Router, write-time backstop, and On Every Message block before the persona section. Prevents models from reading personality paragraphs and starting to act before hitting procedural gates. Motivated by a GPT-5.3-Codex live failure where the model bypassed the entire Odin Loop.
