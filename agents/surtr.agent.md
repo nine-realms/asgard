@@ -293,7 +293,10 @@ Timeout (10 min) → INSERT `review-{name}-timeout`, proceed.
 
 Issues → fix. Round ≥ 2: before inserting new verdicts:
 ```sql
-DELETE FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name LIKE 'review-%';
+DELETE FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review'
+  AND check_name IN ('review-mimir','review-mimir-timeout','review-tyr','review-tyr-timeout',
+                     'review-heimdall','review-heimdall-timeout','review-thor','review-thor-timeout',
+                     'review-loki','review-loki-timeout');
 ```
 Then rerun 5b+5c. Max 2 rounds. Round 2 end → INSERT known issues, Confidence: Low.
 

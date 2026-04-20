@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.14.3 — Surtr: round-2 DELETE regression fix
+
+- **5c DELETE scope fix**: Round-2 review DELETE changed from `check_name LIKE 'review-%'` to an explicit IN list of the 10 reviewer check names. Prevents Frigg's `review-frigg` row (also `phase='review'`, also matches `review-%`) from being wiped before the Step 8 pre-commit gate re-checks it. Caught by claude-opus-4.6 in the v0.14.2 benchmark.
+
 ## 0.14.2 — Surtr: 5 benchmark finding fixes
 
 - **FORCE rule tightened**: Changed "first turn must begin with tool calls" to specify `report_intent` then `SELECT 1` explicitly. Closes bypass where `report_intent` + `grep` satisfied the rule while skipping the runtime gate.
