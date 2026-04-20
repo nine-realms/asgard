@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.14.1 — Surtr caveman prose compression
+
+- **`agents/surtr.agent.md` prose compression**: Stripped all descriptive and rationale prose from Surtr, leaving only imperatives, SQL gates, and routing. ~30 surgical line edits across persona, Ship Mode, Steps 0–6, Skills, and Runtime Gate. All SQL blocks, gate thresholds, tables, signal lines, and placeholder tokens left byte-for-byte identical. Two Mimir findings applied: restored ledger CREATE TABLE before Ship Mode prompt; expanded `H/T/L` shorthand to `Heimdall/Thor/Loki`. `report_intent('Lævateinn rises')` retained (user-approved thematic string).
+
 ## 0.14.0 — Surtr experimental agent
 
 - **New agent `asgard:surtr`**: Ultra-compact caveman-speak variant of Odin for compliance benchmarking. Hypothesis: terse imperative prose equals or exceeds Odin's compliance score at ~38% lower token cost. Same gate sequence, same `odin_checks` SQL ledger (tasks resume across Odin ↔ Surtr swaps), steals all three `odin-*` skills directly. Drops Step 3b (plan file persistence) and Step 10 (PR feedback re-entry). Hostile Norse framing — Frigg's foresight is seized, reviewers are dragged into the fire.
