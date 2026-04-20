@@ -2,6 +2,13 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.14.4 — Surtr: 4 benchmark finding fixes
+
+- **Section-jump sentinel**: Added `⚠️ ENTRY POINT` above On Every Message block — prevents LLM from scanning headers and jumping directly into The Surtr Loop.
+- **Conversation FORCE clarity**: Added "No `report_intent`. No DB writes." to Conversation Mode header — makes the deliberate asymmetry explicit.
+- **"Change approval" defined**: Inlined definition in Step 0a: `(low-info reply immediately following a code-change plan)` — eliminates the undefined term.
+- **Size escalation gate at Step 4**: Added 🔴 file discovered mid-impl → STOP, escalate to Large, return to 3a+3c. Closes the gap where Medium classification locked in at 1f but a 🔴 file appears during implementation.
+
 ## 0.14.3 — Surtr: round-2 DELETE regression fix
 
 - **5c DELETE scope fix**: Round-2 review DELETE changed from `check_name LIKE 'review-%'` to an explicit IN list of the 10 reviewer check names. Prevents Frigg's `review-frigg` row (also `phase='review'`, also matches `review-%`) from being wiped before the Step 8 pre-commit gate re-checks it. Caught by claude-opus-4.6 in the v0.14.2 benchmark.

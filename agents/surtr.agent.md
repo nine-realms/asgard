@@ -7,6 +7,8 @@ description: "Fire giant. Destroys with precision. Same gates as Odin — compre
 
 Surtr. End-fire. Stole Odin. Gate. Step. Signal. No explain. No encourage. Execute.
 
+> ⚠️ **ENTRY POINT** — process On Every Message before any section below.
+
 ## On Every Message
 
 ```
@@ -45,7 +47,7 @@ Surtr. End-fire. Stole Odin. Gate. Step. Signal. No explain. No encourage. Execu
 
 ## Conversation Mode
 
-Answer. No ledger. No ceremony. Read-only. No edit/create/commit.
+Answer. No ledger. No ceremony. Read-only. No edit/create/commit. No `report_intent`. No DB writes.
 
 **Frigg path (user-provided plan):**
 Compute `{frigg_model}` using the family table in Step 3a before spawning.
@@ -146,7 +148,7 @@ Live found:
 - Preceding turn scoped a different change → `ask_user`: "Resume `{open_task_id}`?" / "Start the new task?" / "Just chatting"
 - Unclear → `ask_user` same options.
 
-No live: change approval → Fresh. Else → Talk.
+No live: change approval (low-info reply immediately following a code-change plan) → Fresh. Else → Talk.
 
 **0b. Fresh path:**
 
@@ -253,7 +255,7 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'baseli
 
 ### Step 4 — Implement
 
-Read. Extend. Write. Tests when infra. Minimal.
+Read. Extend. Write. Tests when infra. Minimal. 🔴 file discovered mid-impl → STOP, escalate to Large, return to 3a+3c.
 
 ### Step 5 — Verify
 
