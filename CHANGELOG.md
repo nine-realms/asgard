@@ -2,6 +2,19 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.15.0 — Surtr/Odin hardening + Small-task review reduction
+
+- **Remove Small-task Step 5c adversarial review (Odin + Surtr)**: Small tasks no longer run Mimir in Step 5c. The 5c gate, reviewer signal, launcher, routing table, Gate Registry, Step 7 Present, Step 8 pre-commit, and Task Sizing prose updated in both agents. Step 3a Frigg review is preserved for Small tasks — unchanged. Reduces token cost for one-liner/rename tasks where adversarial review adds little signal.
+- **Step 8 Small pre-commit gate**: Medium/Large re-run the 5c adversarial gate as before. Small now re-checks the 3a Frigg approval row (`check_name IN ('review-frigg', 'review-frigg-approved') AND passed = 1`). Gate Registry and agent prose updated in both files.
+- **Frigg timeout audit trail (Odin + Surtr)**: Timeout bookkeeping and user-approved-after-timeout now use distinct `check_name` values. Timeout → `review-frigg-timeout` (passed=0). User approved despite timeout → `review-frigg-approved` (passed=1, tool=user-override). Normal pass → `review-frigg` (passed=1). Gate query updated to `check_name IN ('review-frigg', 'review-frigg-approved')` in both agents.
+- **Tier-3 smoke evidence (Odin + Surtr)**: Tier-3 throwaway smoke scripts must now INSERT `tier3-smoke` (with `exit_code` and `output_snippet`) **before** deleting the script. Prevents fabricatable evidence — the ledger now records actual runtime signal before cleanup.
+- **File-count guard in Step 5c (Odin + Surtr)**: Added guard alongside existing diff-size guard: if `list_of_files > 100` files, summarize by directory and INSERT `review-partial-coverage`. Prevents reviewer context blowout on large file lists with small per-file diffs.
+- **Git Hygiene orphan-task fix (Surtr)**: If user cancels at Step 0c (uncommitted changes or branch check), Surtr now INSERTs `task-complete` (tool=user-cancel, passed=1) before stopping. Prevents orphan `loop-entry` rows from being picked up as resumable tasks.
+- **Remove dead 1g placeholder (Surtr)**: Removed the `**1g.** (done in 0c)` no-op line. Git hygiene always ran in 0c — the placeholder just added scroll noise.
+- **Document Ship vs 0a staleness windows (Surtr)**: Added inline comments explaining the 24h (Ship) vs 30min (0a) difference. Ship tolerates older loop-entries because the staged change exists on disk regardless; 0a needs recency to distinguish "resume" from "new task."
+- **Remove Small standalone Mimir path from skill (odin-review-prompts)**: Removed `review_context=standalone` logic for Small tasks. All Mimir invocations now use panel mode (Medium/Large only).
+- **Extend check-contracts.sh to Surtr**: Removed the TODO that excluded Surtr from CI. All 5 reviewer check names (`review-tyr`, `review-mimir`, `review-heimdall`, `review-thor`, `review-loki`) are now validated in both `odin.agent.md` and `surtr.agent.md`.
+
 ## 0.14.4 — Surtr: 4 benchmark finding fixes
 
 - **Section-jump sentinel**: Added `⚠️ ENTRY POINT` above On Every Message block — prevents LLM from scanning headers and jumping directly into The Surtr Loop.

@@ -77,6 +77,8 @@ Show `git status --short`, `git --no-pager diff --stat`, current branch.
 **Loop check:**
 ```sql
 SELECT COUNT(*) FROM odin_checks WHERE check_name = 'loop-entry' AND ts >= datetime('now', '-24 hours');
+-- 24h: Ship tolerates older loop-entries — the staged change exists on disk regardless of recency.
+-- 0a uses 30min: needs recency to distinguish "resume this task" from "new task".
 ```
 = 0 → append `⚠️ No Surtr Loop verification found` to Ship prompt.
 
@@ -166,8 +168,18 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'l
 ≥ 1 → emit `> 🔥 Surtr raises Lævateinn…`, begin Step 1. = 0 → retry from CREATE TABLE.
 
 **0c. Git Hygiene:**
-1. `git status --porcelain`. Uncommitted changes → `ask_user`: "Commit them now" / "Stash them" / "Ignore".
-2. `git rev-parse --abbrev-ref HEAD`. On `main`/`master` → `ask_user`: "Create branch for me" / "Stay on {branch}" / "I'll handle it". If create: `git pull --ff-only && git checkout -b surtr/{task_id}` (already on default branch). On `surtr/{different-task}` → same options.
+1. `git status --porcelain`. Uncommitted changes → `ask_user`: "Commit them now" / "Stash them" / "Ignore" / "Cancel". If Cancel:
+```sql
+INSERT INTO odin_checks (task_id, phase, check_name, tool, command, passed)
+VALUES ('{task_id}', 'after', 'task-complete', 'user-cancel', 'Cancelled at 0c git hygiene — uncommitted changes', 1);
+```
+Then STOP.
+2. `git rev-parse --abbrev-ref HEAD`. On `main`/`master` → `ask_user`: "Create branch for me" / "Stay on {branch}" / "I'll handle it" / "Cancel". If create: `git pull --ff-only && git checkout -b surtr/{task_id}` (already on default branch). On `surtr/{different-task}` → same options. If Cancel:
+```sql
+INSERT INTO odin_checks (task_id, phase, check_name, tool, command, passed)
+VALUES ('{task_id}', 'after', 'task-complete', 'user-cancel', 'Cancelled at 0c git hygiene — branch check', 1);
+```
+Then STOP.
 
 ### Step 1 — Understand
 
@@ -188,8 +200,6 @@ Ambiguity → ask_user. PR/issue refs → fetch.
 **1e.** 2–3 searches. Surface reuse: `> 🔍 **Reuse**: {module} handles {X}.`
 
 **1f.** Size: Small/Medium/Large. 🔴 file → escalate.
-
-**1g.** (done in 0c)
 
 **1h.** Signal:
 ```
@@ -224,7 +234,7 @@ description: "Cross-model plan review"
 prompt: "Review this implementation plan.\n\n## Plan\n{plan_text}\n\n## Files to change (with risk levels)\n{list_of_files_with_risk_levels}\n\n## Task size: Small / Medium / Large\n## Repo: {repo_path}"
 ```
 
-Timeout (10 min) → INSERT `review-frigg-timeout` (passed=0), show plan, ask_user. Approve → INSERT `review-frigg` tool=timeout passed=1. Cancel → STOP.
+Timeout (10 min) → INSERT `review-frigg-timeout` (passed=0, bookkeeping only), show plan, ask_user. Approve → INSERT `review-frigg-approved` (passed=1, tool=user-override). Cancel → STOP.
 
 Minor → silent fix, ask_user: "Looks good, proceed" / "I want to adjust" / "Cancel"
 Substantive → show `> 🔥 **Frigg seized** ({frigg_model}): {concerns}`, same ask_user.
@@ -239,7 +249,7 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 
 **🚫 GATE — do not proceed until:**
 ```sql
-SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name = 'review-frigg' AND passed = 1;
+SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-frigg', 'review-frigg-approved') AND passed = 1;
 ```
 **≥ 1. Do not proceed until user responds to `ask_user` in their next message.**
 
@@ -267,7 +277,7 @@ M/L: INSERT phase=after. Small: run, no ledger.
 
 T1 (always): IDE + syntax.
 T2 (tooling): build, typecheck, lint, test. Find cmd: instructions → memory → config → conventions → ask_user. Store.
-T3 (no signal): smoke 3–5 lines, run, delete. Infeasible → INSERT `tier3-infeasible`.
+T3 (no signal): smoke 3–5 lines, run, INSERT `tier3-smoke` (exit_code, output_snippet), delete. Infeasible → INSERT `tier3-infeasible`.
 
 Fail → fix, rerun (max 2). Unfixable → revert, INSERT failure.
 Rollback: `git checkout HEAD -- {files}` + `git clean -fd -- {new_files}`.
@@ -279,14 +289,13 @@ Signal: `> 🔥 Surtr drags {reviewer_list} into the fire…`
 
 Each round: `git add -A` → list_of_files + staged_diff from `git --no-pager diff --staged`.
 
-staged_diff > ~8,000 lines → file list only; INSERT `review-partial-coverage`.
+staged_diff > ~8,000 lines → file list only; INSERT `review-partial-coverage`. list_of_files > 100 files AND diff-size guard NOT triggered → summarize by directory; INSERT `review-partial-coverage` if not already done. Both guards active → keep full per-file list (reviewers need paths for `git diff --staged -- <path>`).
 
 `skill("odin-review-prompts")`. **Hard — fail = HALT.**
 
 Classify (spec/doc/code), select prompt, materialize per skill's render order. Unresolved `{...}` outside diff → HALT.
 
 Launch:
-- **Small:** Mimir
 - **Medium (no 🔴):** Tyr + Mimir parallel
 - **Large OR 🔴:** Tyr + Mimir; then Heimdall/Thor/Loki parallel
 
@@ -303,7 +312,6 @@ DELETE FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review'
 Then rerun 5b+5c. Max 2 rounds. Round 2 end → INSERT known issues, Confidence: Low.
 
 **🚫 GATE:**
-- Small: `review-mimir` or `review-mimir-timeout` ≥ 1
 - Medium: `review-tyr` + `review-mimir` (or `-timeout` variants) ≥ 2
 - Large: all 5 families ≥ 5
 
@@ -341,7 +349,7 @@ Show only: pushback (if any) · boosted prompt (if changed) · reuse find · pla
 
 ### Step 8 — Commit
 
-**🚫 Re-run Step 5c gate. Insufficient → back to 5c.**
+**🚫 Medium/Large: re-run Step 5c gate. Insufficient → back to 5c. Small: verify `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-frigg', 'review-frigg-approved') AND passed = 1;` ≥ 1.** (Small post-implementation check is Quick Verify 5a/5b — no ledger row. Frigg gate confirms plan approval still valid at commit.)
 
 `ask_user`: "Commit this change" / "I'll commit later" / "I want to review first".
 
@@ -408,7 +416,7 @@ Unsure → treat as Medium.
 | 3c Baseline | — | ✅ | ✅ |
 | 4 Implement | ✅ | ✅ | ✅ |
 | 5a–5b Verify | ✅ (no ledger) | ✅ | ✅ |
-| 5c Review | Mimir | Tyr+Mimir | Tyr+Mimir+H/T/L |
+| 5c Review | — | Tyr+Mimir | Tyr+Mimir+H/T/L |
 | 5d Readiness | — | — | ✅ |
 | 5e Bundle | — | ✅ | ✅ |
 | 6 Learn | cmd only | ✅ | ✅ |
@@ -426,11 +434,10 @@ Unsure → treat as Medium.
 | Step | Gate | Check | Threshold |
 |------|------|-------|-----------|
 | 0 | Loop-entry | `check_name = 'loop-entry'` | ≥ 1 |
-| 3a | Frigg recorded | `review-frigg AND passed = 1` | ≥ 1 |
+| 3a | Frigg recorded | `check_name IN ('review-frigg','review-frigg-approved') AND passed = 1` | ≥ 1 |
 | 3a | User approval | `ask_user` after Frigg INSERT | Required |
 | 3c | Baseline captured | `phase = 'baseline'` | ≥ 1 |
-| 5c | Review — Small | `review-mimir` | ≥ 1 |
 | 5c | Review — Medium | `review-tyr, review-mimir` | ≥ 2 |
 | 5c | Review — Large | all 5 families | ≥ 5 |
 | 5e | Bundle readiness | distinct `phase = 'after'` checks | ≥ 2 (M) / ≥ 3 (L) |
-| 8 | Pre-commit | Same as 5c | Same |
+| 8 | Pre-commit | Medium/Large: same as 5c; Small: `review-frigg` OR `review-frigg-approved` passed=1 | Same thresholds |
