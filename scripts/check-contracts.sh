@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # check-contracts.sh — validates cross-file contracts in the asgard repo.
 # Run via: make check
-#
-# TODO: Extend checks to cover agents/surtr.agent.md when Surtr graduates from experimental.
-#       Currently all checks are hardcoded to odin.agent.md only.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,23 +15,54 @@ echo "▸ Check-name contract (skill ↔ agent gates)"
 
 SKILL="$REPO_ROOT/skills/odin-review-prompts/SKILL.md"
 AGENT="$REPO_ROOT/agents/odin.agent.md"
+SURTR="$REPO_ROOT/agents/surtr.agent.md"
 
 for name in review-tyr review-mimir review-heimdall review-thor review-loki; do
   if ! grep -q "$name" "$SKILL" 2>/dev/null; then
     fail "$name missing from skill file"
   elif ! grep -q "$name" "$AGENT" 2>/dev/null; then
-    fail "$name missing from agent gate queries"
+    fail "$name missing from odin.agent.md gate queries"
+  elif ! grep -q "$name" "$SURTR" 2>/dev/null; then
+    fail "$name missing from surtr.agent.md gate queries"
   else
-    pass "$name present in both skill and agent"
+    pass "$name present in skill, odin, and surtr"
   fi
 done
+
+# ── 1b. Frigg timeout/approved contract ────────────────────────────────
+# Both agent files must define the new review-frigg-approved and review-frigg-timeout check names
+# in their gate/ledger SQL so the Frigg approval split is consistent.
+echo "▸ Frigg timeout contract (agent gates)"
+
+for frigg_name in review-frigg-approved review-frigg-timeout; do
+  if ! grep -q "$frigg_name" "$AGENT" 2>/dev/null; then
+    fail "$frigg_name missing from odin.agent.md"
+  elif ! grep -q "$frigg_name" "$SURTR" 2>/dev/null; then
+    fail "$frigg_name missing from surtr.agent.md"
+  else
+    pass "$frigg_name present in odin and surtr"
+  fi
+done
+
+# Gate registry in both agents must use the IN() form that covers review-frigg-approved.
+if ! grep -q "IN ('review-frigg','review-frigg-approved')" "$AGENT" 2>/dev/null; then
+  fail "Odin Gate Registry 3a missing IN ('review-frigg','review-frigg-approved') gate"
+else
+  pass "Odin Gate Registry 3a uses correct IN() gate for Frigg approval"
+fi
+
+if ! grep -q "IN ('review-frigg','review-frigg-approved')" "$SURTR" 2>/dev/null; then
+  fail "Surtr Gate Registry 3a missing IN ('review-frigg','review-frigg-approved') gate"
+else
+  pass "Surtr Gate Registry 3a uses correct IN() gate for Frigg approval"
+fi
 
 # ── 2. Skill file existence ─────────────────────────────────────────────
 # Skills referenced in odin.agent.md must have SKILL.md files.
 echo "▸ Skill file existence"
 
-# Dynamically extract skill names from skill("...") invocations in the agent file.
-SKILL_NAMES=$(grep -Eo 'skill\("([^"]+)"\)' "$AGENT" | sed 's/skill("//;s/")//' | sort -u || true)
+# Dynamically extract skill names from skill("...") invocations in both agent files.
+SKILL_NAMES=$(grep -Eo 'skill\("([^"]+)"\)' "$AGENT" "$SURTR" | sed 's/.*skill("//;s/")//' | sort -u || true)
 
 if [ -z "$SKILL_NAMES" ]; then
   fail "No skill(\"...\") invocations found in agent file"

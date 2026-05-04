@@ -8,7 +8,7 @@ description: Review prompt templates, file-type classification, model selection,
 This skill is a **hard dependency** for Odin's Step 5c adversarial review. It provides file-type classification, review prompt templates, model selection, and reviewer launch instructions.
 
 **Expected check names** (must match the gate queries in `odin.agent.md` Step 5c):
-- `review-mimir` (Small + Medium + Large)
+- `review-mimir` (Medium + Large)
 - `review-tyr` (Medium + Large)
 - `review-heimdall`, `review-thor`, `review-loki` (Large only)
 - Timeout variants: `review-{name}-timeout`
@@ -120,7 +120,7 @@ This section governs **Step 5c only**. Operational skill loading for this step i
 
 When materializing reviewer prompts, Odin expands in six phases:
 1. **Resolve model variables**: replace `{tyr_model}`, `{mimir_model}`, and (Large) `{heimdall_model}`, `{thor_model}`, `{loki_model}` with concrete model strings using the model-resolution rules in Sections 4 and 5. For `{mimir_model}`, apply this precedence: instruction-file override from `.github/copilot-instructions.md` → table Primary → Fallback on model error. For all other variables, use the table Primary → Fallback on model error.
-2. **Apply reviewer/task-size rewrites**: before placeholder verification, rewrite reviewer-specific prompt fragments that depend on task size. For Mimir, replace the default `review_context=panel, panel_reviewers={panel_list}` line with `review_context=standalone` for Small tasks (omit `panel_reviewers` entirely). For Medium/Large, keep the panel form and populate `{panel_list}` later.
+2. **Apply reviewer/task-size rewrites**: before placeholder verification, rewrite reviewer-specific prompt fragments that depend on task size. For Mimir, keep the panel form and populate `{panel_list}` for Medium/Large.
 3. **Evaluate conditionals**: expand `{IF_...}...{/IF_...}` blocks — include or remove the enclosed text based on whether spec files are in the diff.
 4. **Apply the size-guard rewrite if needed**: when Step 5c's large-diff guard triggers, replace the normal "use the provided staged diff / do not re-run git" text plus the entire `<STAGED_DIFF> ... </STAGED_DIFF>` block in the selected review prompt with instructions telling reviewers that the inline diff was omitted for size and that they should inspect files individually using `git --no-pager diff --staged -- <path>` based on the provided file list.
 5. **Substitute remaining placeholders**: replace `{list_of_files}`, `{repo_path}`, `{panel_list}`, etc. with captured values. If the size guard did **not** trigger, this step also substitutes `{staged_diff}` inside `<STAGED_DIFF>` tags — the placeholder is expanded, then the resulting diff content is treated as opaque. After substitution, any brace-like text in the expanded content (e.g., `{variable}` appearing inside the actual diff payload) is **not** re-expanded. Backtick-fenced inline code (e.g., `` `{example}` ``) in the template prose is also left as-is.
@@ -143,7 +143,7 @@ prompt: "{selected_review_prompt}"
 
 INSERT verdict: `phase = 'review'`, `check_name = 'review-tyr'`.
 
-### Mimir (required — Small + Medium + Large)
+### Mimir (required — Medium + Large)
 
 ```
 agent_type: "asgard:mimir"
@@ -159,7 +159,6 @@ prompt: "Pre-screen the following staged changes. Repo: {repo_path}. Files: {lis
 ```
 
 Set review context based on task size:
-- **Small**: use `review_context=standalone` (Mimir is the sole reviewer — omit `panel_reviewers`)
 - **Medium**: `review_context=panel, panel_reviewers=tyr,mimir`
 - **Large**: `review_context=panel, panel_reviewers=tyr,mimir,heimdall,thor,loki`
 
@@ -167,11 +166,7 @@ Set `{panel_list}` based on task size (for Medium/Large prompt substitution):
 - **Medium**: `tyr,mimir`
 - **Large**: `tyr,mimir,heimdall,thor,loki`
 
-For Small tasks, the prompt's review context line becomes:
-```
-review_context=standalone
-```
-For Medium and Large, substitute `{panel_list}` into the template above. This rewrite happens during the render-order step above, before unresolved-placeholder verification.
+Substitute `{panel_list}` into the template above. This rewrite happens during the render-order step above, before unresolved-placeholder verification.
 
 > **Mimir** — guardian of the Well of Wisdom. Performs structured 3-pass review: walkthrough → file-by-file analysis → structured findings with review effort scoring.
 

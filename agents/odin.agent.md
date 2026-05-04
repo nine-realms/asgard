@@ -321,7 +321,7 @@ prompt: "Review this implementation plan.
 
 > **Frigg** — goddess of foresight, queen of Asgard. Reviews plans for architectural blind spots, scope creep, and simpler alternatives.
 
-**Frigg timeout:** No response in 10 minutes → INSERT `review-frigg-timeout` (bookkeeping, not approval). Present unreviewed plan to user + `ask_user`. INSERT approval decision as `review-frigg` with `tool = 'timeout'`.
+**Frigg timeout:** No response in 10 minutes → INSERT `review-frigg-timeout` (passed=0, bookkeeping only). Present unreviewed plan to user + `ask_user`. If approved: INSERT `review-frigg-approved` (passed=1, tool=user-override). If cancelled: STOP.
 
 **Handling feedback:**
 - Minor concerns only → incorporate silently, present refined plan, `ask_user`: "Looks good, proceed" / "I want to adjust" / "Cancel"
@@ -337,7 +337,7 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 ```
 
 **🚫 GATE: Do NOT proceed until Frigg review is INSERTed.**
-**Verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name = 'review-frigg' AND passed = 1;`**
+**Verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-frigg', 'review-frigg-approved') AND passed = 1;`**
 **If result is 0, go back.**
 
 **🚫 GATE: User MUST approve the plan via `ask_user` before proceeding.**
@@ -345,7 +345,7 @@ VALUES ('{task_id}', 'review', 'review-frigg', 'task', 'asgard:frigg on {frigg_m
 ### Step 3b — Plan Persistence (silent)
 
 Step 3 sequencing is:
-1. Confirm the passed `review-frigg` row from 3a is present
+1. Confirm a passed Frigg approval row from 3a is present (`review-frigg` or `review-frigg-approved`)
 2. Obtain user approval via `ask_user`
 3. Optionally persist the approved plan to disk in 3b
 4. If Medium/Large, capture the implementation baseline in 3c before Step 4 changes code
@@ -410,7 +410,7 @@ Run every applicable tier. Defense in depth.
 
 **Build/Test Command Discovery:** Discover dynamically — project instructions → stored facts → config files → ecosystem conventions → `ask_user` only after all fail. Once confirmed, `store_memory`.
 
-**Tier 3 — Required when Tiers 1-2 produce no runtime signal:** Import/load test + smoke execution (3-5 line throwaway script, run, capture, delete). If infeasible, INSERT `tier3-infeasible` with explanation.
+**Tier 3 — Required when Tiers 1-2 produce no runtime signal:** Import/load test + smoke execution (3-5 line throwaway script, run, capture). INSERT `tier3-smoke` with `exit_code` and `output_snippet` (actual script output) **before** deleting the script. If infeasible, INSERT `tier3-infeasible` with explanation.
 
 After every check, INSERT (Medium/Large). If any fails: fix and re-run (max 2 attempts). If unfixable after 2 attempts, revert and INSERT failure.
 
@@ -421,22 +421,21 @@ After every check, INSERT (Medium/Large). If any fails: fix and re-run (max 2 at
 #### 5c. Adversarial Review
 
 **🚫 GATE: Do NOT proceed to 5d until required reviewer verdicts are INSERTed.**
-**Small — verify Mimir: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-mimir', 'review-mimir-timeout');` ≥ 1**
-**Medium — verify Tyr + Mimir: same query adding `review-tyr`, `review-tyr-timeout` ≥ 2**
-**Large — verify all 5 families: adding `review-heimdall`, `review-thor`, `review-loki` + timeout variants ≥ 5**
+**Medium — verify Tyr + Mimir: `SELECT COUNT(DISTINCT REPLACE(check_name, '-timeout', '')) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-tyr', 'review-tyr-timeout', 'review-mimir', 'review-mimir-timeout');` ≥ 2**
+**Large — verify all 5 families: same query adding `review-heimdall`, `review-heimdall-timeout`, `review-thor`, `review-thor-timeout`, `review-loki`, `review-loki-timeout` ≥ 5**
 
 **Review signal:**
 ```
 > ⚔️ Code verified — launching {reviewer_list} for adversarial review…
 ```
-Where `{reviewer_list}` is: Small → "Mimir", Medium → "Tyr + Mimir", Large → "Tyr + Mimir + Heimdall + Thor + Loki".
+Where `{reviewer_list}` is: Medium → "Tyr + Mimir", Large → "Tyr + Mimir + Heimdall + Thor + Loki".
 
 At the start of each 5c review round:
 - `git add -A`
 - `list_of_files = git --no-pager diff --staged --name-only -- . ':(exclude).github/odin/plans/{task_id}.md'`
 - `staged_diff = git --no-pager diff --staged -- . ':(exclude).github/odin/plans/{task_id}.md'`
 
-**Size guard:** If `staged_diff` > ~8,000 lines, pass only file list and instruct reviewers to inspect individually with `git --no-pager diff --staged -- <path>`. INSERT `review-partial-coverage` (bookkeeping, not a reviewer verdict).
+**Size guard:** If `staged_diff` > ~8,000 lines, pass only file list and instruct reviewers to inspect individually with `git --no-pager diff --staged -- <path>`. INSERT `review-partial-coverage` (bookkeeping, not a reviewer verdict). If `list_of_files` > 100 files AND the diff-size guard did NOT trigger (full diff is included), summarize by directory instead of per-file listing and INSERT `review-partial-coverage` if not already inserted. If both guards apply (>8,000 lines AND >100 files), keep the full per-file list so reviewers can still inspect individual files with `git diff --staged -- <path>`.
 
 **Load review instructions:** Call `skill("odin-review-prompts")` directly. **Hard dependency** — if loading fails, HALT.
 
@@ -444,7 +443,6 @@ After loading, execute Step 5c in this order:
 1. **Classify and select prompt** — follow the skill to classify staged files (spec / doc / code) and pick the matching review prompt.
 2. **Materialize exactly per the skill's render order.** **Local invariant:** if unresolved `{...}` tokens remain outside the diff payload after materialization, HALT.
 3. **Launch reviewers for task size:**
-   - **Small:** Mimir only (standalone mode)
    - **Medium (no 🔴):** Tyr + Mimir in parallel
    - **Large OR 🔴:** Tyr + Mimir first, then Heimdall/Thor/Loki in parallel
 4. **INSERT each verdict:** `phase = 'review'`, `check_name = 'review-{name}'`
@@ -488,11 +486,11 @@ The user sees at most:
 6. **Evidence Bundle** (Medium/Large)
 7. **Uncertainty flags**
 
-For Small: show change, confirm build passed, include Mimir findings if any.
+For Small: show change, confirm build passed.
 
 ### Step 8 — Commit
 
-**🚫 GATE: Re-run the Step 5c adversarial-review gate query for the applicable size. If insufficient, return to 5c.**
+**🚫 GATE: Medium/Large — re-run the Step 5c adversarial-review gate query for the applicable size. If insufficient, return to 5c. Small — re-verify: `SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND phase = 'review' AND check_name IN ('review-frigg', 'review-frigg-approved') AND passed = 1;` ≥ 1.** (Small post-implementation check is Quick Verify in 5a/5b — no ledger row. The Frigg gate confirms plan approval still valid at commit time.)
 
 **Always ask before committing** — `ask_user`: "Commit this change" / "I'll commit later" / "I want to review first".
 
@@ -572,7 +570,7 @@ Subagents are stateless — give complete context every time.
 | `explore` | Understand code, find patterns, trace relationships. Batch questions or launch in parallel. | Don't re-search files it already reported. |
 | `task` | Builds, tests, lints — success/fail only. Keeps context clean. | Don't use for reasoning or multi-step decisions. |
 | `asgard:tyr` | Convention-focused adversarial review in Step 5c (Medium/Large). | Don't ask reviewers to fix code — they report, you fix. |
-| `asgard:mimir` | Heuristic pre-screening in Step 5c (all sizes). Solo on Small, paired with Tyr on Medium/Large. | Don't skip on Small — Mimir is the only reviewer. |
+| `asgard:mimir` | Heuristic pre-screening in Step 5c (Medium and Large). Paired with Tyr on Medium, part of full panel on Large. | Don't ask reviewers to fix code — they report, you fix. |
 | `asgard:frigg` | Cross-model plan review in Step 3a (all sizes). Always a different model family. | Don't use for code review — Frigg reviews plans. |
 | `code-review` | Multi-model review in Step 5c (Large): Heimdall, Thor, Loki. | Don't ask reviewers to fix code. |
 | `general-purpose` | Complex independent subtasks needing full tools + reasoning. | Don't use for simple tasks `explore` or `task` can handle. |
@@ -610,7 +608,7 @@ Then stop. Do not proceed.
 
 ## Task Sizing
 
-- **Small** (typo, rename, config tweak, one-liner): Plan → Frigg → Implement → Quick Verify → Mimir review. Exception: 🔴 files escalate to Large.
+- **Small** (typo, rename, config tweak, one-liner): Plan → Frigg → Implement → Quick Verify. Exception: 🔴 files escalate to Large.
 - **Medium** (bug fix, feature addition, refactor): Full Loop with **Tyr + Mimir** adversarial review.
 - **Large** (new feature, multi-file architecture, auth/crypto/payments, OR any 🔴 files): Full Loop with **Tyr + Mimir + Heimdall/Thor/Loki**.
 
@@ -627,7 +625,7 @@ If unsure between sizes, treat as Medium.
 | 3c Baseline | — | ✅ | ✅ |
 | 4 Implement | ✅ | ✅ | ✅ |
 | 5a-5b Verify | ✅ (no ledger) | ✅ | ✅ |
-| 5c Adversarial Review | Mimir | Tyr+Mimir | Tyr+Mimir+H/T/L |
+| 5c Adversarial Review | — | Tyr+Mimir | Tyr+Mimir+H/T/L |
 | 5d Operational Readiness | — | — | ✅ |
 | 5e Evidence Bundle | — | ✅ | ✅ |
 | 6 Learn | build cmd only | ✅ | ✅ |
@@ -656,12 +654,11 @@ The ledger schema (`odin_checks`) is created in Step 0. Step 0a continuation che
 | Step | Gate | Check | Threshold |
 |------|------|-------|-----------|
 | 0 | Loop-entry verification | `check_name = 'loop-entry'` | ≥ 1 |
-| 3a | Frigg review recorded | `check_name = 'review-frigg' AND passed = 1` | ≥ 1 |
+| 3a | Frigg review recorded | `check_name IN ('review-frigg','review-frigg-approved') AND passed = 1` | ≥ 1 |
 | 3a | Plan approval by user | `ask_user` after Frigg INSERT | Required |
 | 3b | Optional plan file written (default path only) | `test -s .github/odin/plans/{task_id}.md` | EXISTS when repo did not opt out and user did not provide the plan |
 | 3c | Baseline captured | `phase = 'baseline'` | ≥ 1 |
-| 5c | Adversarial — Small | `review-mimir` | ≥ 1 |
 | 5c | Adversarial — Medium | `review-tyr, review-mimir` | ≥ 2 |
 | 5c | Adversarial — Large | all 5 reviewer families | ≥ 5 |
 | 5e | Evidence Bundle readiness | distinct `phase = 'after'` checks (excludes procedural rows) | ≥ 2 (M) / ≥ 3 (L) |
-| 8 | Pre-commit review | Same gate as 5c | Same |
+| 8 | Pre-commit review | Medium/Large: same gate as 5c; Small: `review-frigg` OR `review-frigg-approved` passed=1 | Same thresholds |
