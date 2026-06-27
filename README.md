@@ -26,6 +26,13 @@ A single AI agent writes code, reviews its own work, and calls it done. Same bli
 
 Heimdall, Thor, and Loki are also invoked by Odin on Large tasks — three different model families providing cross-model signal. Heimdall is the sentinel (baseline review), Thor is brute-force structural analysis, and Loki is the adversarial trickster hunting subtle edge cases.
 
+### Headless variants
+
+| Agent | Role |
+|-------|------|
+| **Surtr** (`asgard:surtr`) *(experimental)* | Ultra-compact caveman-speak Odin. Same gates and ledger, ~38% fewer lines. Benchmarks whether terse imperatives match Odin's compliance at lower token cost. |
+| **Vidar** (`asgard:vidar`) | The silent god. Autonomous worker built to be **dispatched by another agent**, not used by a human. No user prompts ever — runs the gates, gets a Frigg plan review and a Mimir code review, decides what to fix on its own, then **stops before commit** and hands the work back uncommitted (usually in a git worktree). Frigg + Mimir only; no Tyr/Heimdall/Thor/Loki panel. |
+
 ## Skills Architecture
 
 Odin's full instruction set is 700+ lines. Loading all of it every turn would bloat the context window. Instead, step-specific knowledge lives in **skill files** that load on demand:

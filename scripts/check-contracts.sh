@@ -16,6 +16,7 @@ echo "▸ Check-name contract (skill ↔ agent gates)"
 SKILL="$REPO_ROOT/skills/odin-review-prompts/SKILL.md"
 AGENT="$REPO_ROOT/agents/odin.agent.md"
 SURTR="$REPO_ROOT/agents/surtr.agent.md"
+VIDAR="$REPO_ROOT/agents/vidar.agent.md"
 
 for name in review-tyr review-mimir review-heimdall review-thor review-loki; do
   if ! grep -q "$name" "$SKILL" 2>/dev/null; then
@@ -57,12 +58,41 @@ else
   pass "Surtr Gate Registry 3a uses correct IN() gate for Frigg approval"
 fi
 
+# ── 1c. Vidar lean-reviewer contract ───────────────────────────────────
+# Vidar is the autonomous worker variant: Frigg (plan) + Mimir (code) only.
+# It must define the two review check names it uses, and must NOT carry the
+# full panel (Tyr / Heimdall / Thor / Loki) or the user-approval override.
+echo "▸ Vidar lean-reviewer contract"
+
+for vname in review-frigg review-mimir; do
+  if ! grep -q "$vname" "$VIDAR" 2>/dev/null; then
+    fail "$vname missing from vidar.agent.md"
+  else
+    pass "$vname present in vidar"
+  fi
+done
+
+for absent in review-tyr review-heimdall review-thor review-loki review-frigg-approved; do
+  if grep -q "$absent" "$VIDAR" 2>/dev/null; then
+    fail "$absent should NOT appear in vidar.agent.md (lean autonomous worker)"
+  else
+    pass "$absent correctly absent from vidar"
+  fi
+done
+
+# Vidar never prompts a user — there must be no ask_user call in the spec.
+if grep -q "ask_user" "$VIDAR" 2>/dev/null; then
+  fail "ask_user found in vidar.agent.md — Vidar must be fully autonomous"
+else
+  pass "vidar.agent.md has no ask_user calls"
+fi
+
 # ── 2. Skill file existence ─────────────────────────────────────────────
 # Skills referenced in odin.agent.md must have SKILL.md files.
 echo "▸ Skill file existence"
 
-# Dynamically extract skill names from skill("...") invocations in both agent files.
-SKILL_NAMES=$(grep -Eo 'skill\("([^"]+)"\)' "$AGENT" "$SURTR" | sed 's/.*skill("//;s/")//' | sort -u || true)
+# Dynamically extract skill names from skill("...") invocations in all agent files.
+SKILL_NAMES=$(grep -Eo 'skill\("([^"]+)"\)' "$AGENT" "$SURTR" "$VIDAR" | sed 's/.*skill("//;s/")//' | sort -u || true)
 
 if [ -z "$SKILL_NAMES" ]; then
   fail "No skill(\"...\") invocations found in agent file"
