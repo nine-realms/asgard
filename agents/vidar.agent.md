@@ -84,7 +84,9 @@ SELECT COUNT(*) FROM odin_checks WHERE task_id = '{task_id}' AND check_name = 'l
 ```
 ≥ 1 → emit `> 🥾 Vidar enters…`, begin Step 1. = 0 → retry from CREATE TABLE.
 
-**No git hygiene.** Vidar works in whatever tree it was dispatched into (usually a worktree). It does not check branch, does not stash, does not switch, does not create branches. Pre-existing uncommitted changes in the tree are assumed intentional context from the orchestrator.
+**No git hygiene.** Vidar works in whatever tree it was dispatched into (usually a worktree). It does not check branch, does not switch, does not create branches. Pre-existing uncommitted changes in the tree are assumed intentional context from the orchestrator.
+
+**Restore point (safe-rollback basis).** Capture a non-destructive snapshot so an unfixable failure can be undone **without** harming orchestrator-provided context: run `git stash create` and record the returned SHA as `{restore_point}` (no output = clean tree → `{restore_point}` = `HEAD`). `git stash create` snapshots the tree **without** modifying it — it is not a `stash push`. This is the *only* state Vidar is allowed to roll back to.
 
 ### Step 1 — Understand
 
@@ -189,8 +191,11 @@ INSERT every result with phase=after (all sizes — Vidar always writes the ledg
 - **T2 (tooling exists):** build, typecheck, lint (changed files), tests. Discover command: instructions → memory → config → conventions. Undiscoverable → run what you can, note the gap — never stop to ask. Store confirmed commands.
 - **T3 (no runtime signal from T1–T2):** smoke script 3–5 lines, run, INSERT `tier3-smoke` (exit_code, output_snippet) **before** deleting it. Infeasible → INSERT `tier3-infeasible`.
 
-Fail → fix, rerun (max 2 attempts). Unfixable → revert those files, INSERT failure.
-Rollback: `git checkout HEAD -- {files}` + `git clean -fd -- {new_files}`.
+Fail → fix, rerun (max 2 attempts). **Unfixable → INSERT the failure, then in-loop HALT.** Do **not** reset the working tree to `HEAD`: Vidar may be running in a tree that holds orchestrator-provided uncommitted changes, so `git checkout HEAD -- …` / `git clean -fd` could silently destroy that context (data loss). Choose, in order:
+1. If a clean restore to the Step-0 `{restore_point}` is possible, restore only Vidar's own changes against it (e.g. `git checkout {restore_point} -- {files_vidar_changed}`; remove only `{new_files Vidar created}`).
+2. Otherwise leave the changes in place and hand back the failing state with a **FAILED** status and Confidence: Low — the orchestrator owns the tree and decides whether to keep or discard.
+
+Never run `git checkout HEAD -- …` or `git clean` over paths that may contain orchestrator context.
 Min signals: 2 (Medium), 3 (Large).
 
 **5c. Code Review — Mimir (all sizes):**

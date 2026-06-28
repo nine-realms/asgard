@@ -88,7 +88,7 @@ else
 fi
 
 # ── 2. Skill file existence ─────────────────────────────────────────────
-# Skills referenced in odin.agent.md must have SKILL.md files.
+# Skills referenced in any agent file (Odin, Surtr, Vidar) must have SKILL.md files.
 echo "▸ Skill file existence"
 
 # Dynamically extract skill names from skill("...") invocations in all agent files.
