@@ -2,6 +2,20 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.16.0 — Vidar: autonomous worker variant
+
+- **New agent `asgard:vidar`**: A headless, fully autonomous variant of Surtr, built to be dispatched *by another agent* (orchestrator/command agent), not used directly by a human. Same `odin_checks` ledger and gate skeleton; derived from Surtr but stripped for unattended operation.
+  - **Zero user prompts**: No `ask_user` anywhere. Every Odin/Surtr approval gate becomes an autonomous decision rule (see the agent's **Autonomous Decisions** section). Genuinely blocking ambiguity or an unsafe request → **HALT** (`task-halted` row) and report to the orchestrator — never ask.
+  - **Lean review panel**: Frigg plan review (3a, cross-model) + Mimir code review (5c, standalone) only — flat across all task sizes. Drops Tyr and the Heimdall/Thor/Loki panel entirely. The Frigg gate drops the user-approval requirement and the `review-frigg-approved` override (no user to override).
+  - **Stops before commit**: Ends at Step 7 **Handback** — changes are left uncommitted in the working tree (usually a git worktree) with an evidence bundle for the orchestrator to review and ship. No Ship Mode, no Step 8/9 commit/push, no Step 10 PR re-entry.
+  - **No git hygiene**: Works in whatever tree it's dispatched into; never switches branches, stashes, or creates branches.
+  - **Always writes the ledger**: Unlike Surtr's Small-task path, Vidar records ledger rows at every size — the evidence bundle is the handback artifact. Bundle threshold scales 1/2/3 by size.
+- **`check-contracts.sh` — Vidar lean-reviewer contract**: New section 1c asserts `review-frigg`/`review-mimir` are present in `vidar.agent.md`, that the full-panel names (`review-tyr`, `review-heimdall`, `review-thor`, `review-loki`) and `review-frigg-approved` are **absent**, and that the spec contains no `ask_user` call. Vidar is also included in the skill-existence check.
+
+### Fixed
+
+- **`mimir-feedback` extension no longer ships to end users**: The extension is an authoring tool — it parses `agents/mimir.agent.md` to grow the CCA heuristic library, and its output is only actionable in the source repo. It was wired into `plugin.json` via `"extensions": "extensions/"`, which made Copilot fork it and register its three MCP tools (`mimir_list_heuristics`, `mimir_propose_heuristic`, `mimir_gap_analysis`) into **every end-user session of every asgard agent** — pure overhead and tool-namespace pollution. Moved `extensions/mimir-feedback/` → **`.github/extensions/mimir-feedback/`** (Copilot's project-local extension discovery path, per the SDK docs) and removed the `extensions` key from `plugin.json`. Net: the tools now load **only when developing asgard** (cwd = this repo), never for installed-plugin users. Relative path to `mimir.agent.md` updated for the deeper location (`../../..`).
+
 ## 0.15.0 — Surtr/Odin hardening + Small-task review reduction
 
 - **Remove Small-task Step 5c adversarial review (Odin + Surtr)**: Small tasks no longer run Mimir in Step 5c. The 5c gate, reviewer signal, launcher, routing table, Gate Registry, Step 7 Present, Step 8 pre-commit, and Task Sizing prose updated in both agents. Step 3a Frigg review is preserved for Small tasks — unchanged. Reduces token cost for one-liner/rename tasks where adversarial review adds little signal.

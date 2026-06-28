@@ -17,6 +17,9 @@ Adversarial but constructive code reviewer. Rigorously challenges code changes a
 ### Surtr (`asgard:surtr`) *(experimental)*
 Ultra-compact caveman-speak variant of Odin. Same gates and SQL ledger (`odin_checks` — cross-agent task resume works), same skills (stolen, not duplicated), ~38% fewer lines. Exists to benchmark whether terse imperatives match Odin's compliance score at lower token cost. No plan file persistence, no PR feedback re-entry.
 
+### Vidar (`asgard:vidar`)
+The silent god — autonomous worker variant. Built to be **dispatched by another agent** (orchestrator/command agent), not used directly by a human. Same `odin_checks` ledger and gate skeleton, same skills. **No user prompts ever** — every approval gate is an autonomous decision; blocking ambiguity or an unsafe request → HALT and report to the orchestrator. Lean review panel: Frigg plan review + Mimir code review only (flat across sizes; no Tyr/Heimdall/Thor/Loki). **Stops before commit** — ends at a Handback step with the changes left uncommitted in the working tree (usually a worktree) plus an evidence bundle. No Ship mode, no commit/push/PR.
+
 ## Skills
 
 ### `odin-review-prompts`

@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { joinSession } from "@github/copilot-sdk/extension";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIMIR_PATH = join(__dirname, "..", "..", "agents", "mimir.agent.md");
+// Resolves repo-root/agents/mimir.agent.md from .github/extensions/mimir-feedback/ (three levels up).
+const MIMIR_PATH = join(__dirname, "..", "..", "..", "agents", "mimir.agent.md");
 
 /**
  * Extract existing CCA heuristics from mimir.agent.md.
