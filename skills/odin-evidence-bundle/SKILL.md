@@ -61,7 +61,7 @@ Present the evidence in this format:
 **Changes**: [each file and what changed]
 **Blast radius**: [dependent files/modules]
 **Confidence**: High / Medium / Low (see definitions below)
-**Rollback**: `git checkout HEAD -- {modified_files}` + `git clean -fd -- {new_files}` (or `git stash`)
+**Rollback**: undo the changes — uncommitted (the usual case at presentation): `git restore -- {modified_files}` and remove only files this task newly created; if already committed: `git revert HEAD`. Avoid a blunt `git checkout HEAD -- …` / `git clean -fd` over paths that may hold unrelated uncommitted changes.
 ```
 
 ---

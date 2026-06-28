@@ -2,6 +2,10 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.16.1 — Evidence Bundle rollback guidance
+
+- **Safer rollback line in `odin-evidence-bundle`**: The bundle's `Rollback:` line hardcoded `git checkout HEAD -- {modified_files}` + `git clean -fd`, which is blunt and — for an agent dispatched into a tree with unrelated uncommitted changes (e.g. Vidar in a worktree) — risks clobbering context. The shared skill feeds Odin/Surtr/Vidar, and the bundle is shown pre-commit, so the guidance now leads with the uncommitted case (`git restore -- {modified_files}`, remove only newly-created files), notes `git revert HEAD` for already-committed work, and warns against blunt `checkout HEAD`/`clean` over paths that may hold unrelated changes. Surfaced by the Vidar smoke-test handback.
+
 ## 0.16.0 — Vidar: autonomous worker variant
 
 - **New agent `asgard:vidar`**: A headless, fully autonomous variant of Surtr, built to be dispatched *by another agent* (orchestrator/command agent), not used directly by a human. Same `odin_checks` ledger and gate skeleton; derived from Surtr but stripped for unattended operation.
