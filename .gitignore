@@ -17,3 +17,7 @@ docs/assets/images/originals/
 # Odin ephemeral plan files (per-task, not decision records)
 .github/odin/plans/*.md
 !.github/odin/plans/.gitkeep
+
+# Extracted PR feedback corpus — contains verbatim review comments from source
+# repositories, which may be private. Never commit corpus data to this public repo.
+docs/benchmarks/mimir/corpus/data/

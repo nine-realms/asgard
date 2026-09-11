@@ -1,6 +1,6 @@
 # Surtr Benchmark
 
-Compliance benchmark for `agents/surtr.agent.md` — the caveman-speak ultra-compact experimental variant of Odin.
+Compliance benchmark for `com.github.copilot/agents/surtr.agent.md` — the caveman-speak ultra-compact experimental variant of Odin.
 
 ## Purpose
 
@@ -14,8 +14,8 @@ Two-arm comparison (not three-arm — Surtr is a structurally different agent, n
 
 | Arm | Agent | Lines |
 |-----|-------|-------|
-| A — Odin baseline | `agents/odin.agent.md` | 666 |
-| B — Surtr candidate | `agents/surtr.agent.md` | 421 |
+| A — Odin baseline | `com.github.copilot/agents/odin.agent.md` | 666 |
+| B — Surtr candidate | `com.github.copilot/agents/surtr.agent.md` | 421 |
 
 Same 4-model panel, same scoring rubric. Two-arm can establish whether Surtr achieves parity; it cannot prove compression *caused* any difference.
 
@@ -27,7 +27,7 @@ Same 4-model panel, same scoring rubric. Two-arm can establish whether Surtr ach
    - `gpt-5.3-codex`
    - `gpt-5.4`
    - `claude-opus-4.6`
-3. Prompt each with the contents of `simulation-prompt.md` and direct them to read `agents/surtr.agent.md` and the three `odin-*` skill files
+3. Prompt each with the contents of `simulation-prompt.md` and direct them to read `com.github.copilot/agents/surtr.agent.md` and the three `odin-*` skill files
 4. Score each response with `docs/benchmarks/scoring-rubric.md` (see scorer notes below)
 5. File results in `docs/benchmarks/results/YYYY-MM-DD-surtr-v{version}-{label}.md`
 

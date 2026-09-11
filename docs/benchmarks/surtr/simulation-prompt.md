@@ -1,10 +1,10 @@
 # Surtr Instruction Simulation Prompt
 
-> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `agents/surtr.agent.md` file and all skill files it references.
+> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `com.github.copilot/agents/surtr.agent.md` file and all skill files it references.
 
 ---
 
-Read the file `agents/surtr.agent.md` in full. Then read all skill files referenced by the agent spec:
+Read the file `com.github.copilot/agents/surtr.agent.md` in full. Then read all skill files referenced by the agent spec:
 
 - `skills/odin-review-prompts/SKILL.md`
 - `skills/odin-evidence-bundle/SKILL.md`

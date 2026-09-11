@@ -1,10 +1,10 @@
 # Mimir Instruction Simulation Prompt
 
-> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `agents/mimir.agent.md` file and the companion skill `skills/mimir-heuristics/SKILL.md`.
+> Copy this prompt verbatim when launching benchmark agents. Each agent should also be pointed at the full `com.github.copilot/agents/mimir.agent.md` file and the companion skill `skills/mimir-heuristics/SKILL.md`.
 
 ---
 
-Read the file `agents/mimir.agent.md` in full. Then read the companion skill `skills/mimir-heuristics/SKILL.md`. Then answer these 5 questions:
+Read the file `com.github.copilot/agents/mimir.agent.md` in full. Then read the companion skill `skills/mimir-heuristics/SKILL.md`. Then answer these 5 questions:
 
 **Scenario:** You are reviewing a staged diff containing 4 files in a .NET project:
 - `Controllers/AuthController.cs` — new `POST /api/auth/reset-password` endpoint

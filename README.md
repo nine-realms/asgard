@@ -47,6 +47,15 @@ Three skills is the practical ceiling — beyond that, remembering to invoke the
 
 ## Install
 
+**Via the marketplace** (recommended — gives you `/plugin` update notifications):
+
+```bash
+copilot plugin marketplace add nine-realms/asgard
+copilot plugin install asgard@asgard
+```
+
+**Direct install:**
+
 ```bash
 copilot plugin install nine-realms/asgard
 ```

@@ -23,7 +23,7 @@ Use them to gather candidate edits. Use the benchmark suite to measure whether t
 
 1. Start from a clean branch or commit.
 2. Ask a cross-family model panel to read the current spec and skill files:
-   - `agents/odin.agent.md`
+   - `com.github.copilot/agents/odin.agent.md`
    - `skills/odin-review-prompts/SKILL.md`
    - `skills/odin-recall/SKILL.md`
    - `skills/odin-evidence-bundle/SKILL.md`

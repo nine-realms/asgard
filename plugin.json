@@ -1,17 +1,17 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "asgard",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Odin agent ecosystem \u2014 adversarial code review agents for GitHub Copilot CLI",
   "author": {
     "name": "Agents of Asgard"
   },
+  "repository": "https://github.com/nine-realms/asgard",
+  "homepage": "https://github.com/nine-realms/asgard",
   "keywords": [
     "odin",
     "code-review",
     "adversarial-review",
     "agents"
-  ],
-  "skills": "skills/",
-  "agents": "agents/",
-  "mcpServers": ".mcp.json"
+  ]
 }

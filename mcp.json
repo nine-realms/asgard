@@ -1,6 +1,8 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "context7": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
     }
