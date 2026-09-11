@@ -13,7 +13,7 @@ Launch 3+ agents in parallel, each on a different model:
 ```
 agent_type: "general-purpose"
 model: "{model}"
-prompt: "Read the file `agents/mimir.agent.md` in full.
+prompt: "Read the file `com.github.copilot/agents/mimir.agent.md` in full.
          Then read the companion skill `skills/mimir-heuristics/SKILL.md`.
          Then answer the 5 questions below:
          <paste full contents of simulation-prompt.md here>"
@@ -51,6 +51,15 @@ See `scoring-rubric.md` for the 5-dimension rubric (Benchmark 1 only). Each dime
 
 Benchmark 2 is scored qualitatively — compare review outputs side-by-side on finding quality, CCA depth, and signal-to-noise ratio.
 
+### Benchmark 3: Ground-Truth Recall
+
+Tests whether Mimir finds the issues real reviewers found. Mines merged PRs for inline review
+comments the author acted on, then scores a Mimir run against them for recall — overall and
+split by lane. Unlike Benchmarks 1 and 2, this produces a number that moves when the agent
+file changes.
+
+See [`corpus/README.md`](corpus/README.md).
+
 ## Results
 
 Each benchmark run is saved as `results/YYYY-MM-DD-{label}.md`. Compare scores across runs to measure whether agent file changes improved or degraded instruction compliance.
@@ -62,3 +71,4 @@ Each benchmark run is saved as `results/YYYY-MM-DD-{label}.md`. Compare scores a
 | `simulation-prompt.md` | The exact prompt given to each model (Benchmark 1) |
 | `scoring-rubric.md` | How to score responses (5 dimensions, 1-10 each) |
 | `results/` | Timestamped benchmark results |
+| `corpus/` | Ground-truth PR feedback corpus — extractor, scorer, and workflow (Benchmark 3) |
