@@ -34,7 +34,7 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
   marketplace, so it can be added and updated as a catalog rather than only direct-installed:
   ```bash
   copilot plugin marketplace add nine-realms/asgard
-  copilot plugin install asgard@asgard
+  copilot plugin install asgard@nine-realms
   ```
   This is additive — `copilot plugin install nine-realms/asgard` still works. The benefit is that
   `/plugin` surfaces upstream version bumps and offers an **Update** action, which direct installs
@@ -60,7 +60,7 @@ Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant di
   (`copilot plugin marketplace add datopian/portaljs` → `copilot plugin install portaljs@datopian-portaljs`
   succeeded — the CLI clones the full repo into its marketplace cache, so relative sources resolve
   against the clone root). After this lands on `main`, smoke-test
-  `copilot plugin marketplace add nine-realms/asgard` + `copilot plugin install asgard@asgard` once.
+  `copilot plugin marketplace add nine-realms/asgard` + `copilot plugin install asgard@nine-realms` once.
   Note the CLI now warns that **direct installs are deprecated** ("Only plugin@marketplace installs
   will be supported in a future release"), so the marketplace path is the forward-compatible one.
 - **`.github/extensions/` stays outside the plugin**, as established in 0.16.0 — Agent Plugins 1.0

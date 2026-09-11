@@ -109,7 +109,7 @@ Odin's operational skills (`skills/*/SKILL.md`) extract step-specific content fr
 After modifying agents:
 1. Run contract checks: `make check` (validates cross-file contracts — check names, model tables, skill existence)
 2. Reinstall the plugin: `copilot plugin install ./` (from the repo root)
-   - Or, via the marketplace: `copilot plugin marketplace add ./` then `copilot plugin install asgard@asgard`
+   - Or, via the marketplace: `copilot plugin marketplace add ./` then `copilot plugin install asgard@nine-realms`
 3. Inside Copilot CLI, verify with `/agent` and select the modified agent
 4. Run a real task through the modified agent and verify the full loop completes
 

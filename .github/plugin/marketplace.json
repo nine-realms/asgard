@@ -1,16 +1,16 @@
 {
-  "name": "asgard",
+  "name": "nine-realms",
   "owner": {
     "name": "Agents of Asgard"
   },
   "metadata": {
-    "description": "Adversarial code review agents for GitHub Copilot CLI",
+    "description": "Nine Realms plugin marketplace — home of asgard, the adversarial code review agents for GitHub Copilot CLI",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "asgard",
-      "description": "Odin agent ecosystem \u2014 adversarial code review agents (Odin, Mimir, Frigg, Tyr, Surtr, Vidar) for GitHub Copilot CLI",
+      "description": "Odin agent ecosystem — adversarial code review agents (Odin, Mimir, Frigg, Tyr, Surtr, Vidar) for GitHub Copilot CLI",
       "version": "0.17.0",
       "source": ".",
       "author": {
