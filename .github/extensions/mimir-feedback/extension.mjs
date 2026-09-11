@@ -4,19 +4,21 @@ import { fileURLToPath } from "node:url";
 import { joinSession } from "@github/copilot-sdk/extension";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Resolves repo-root/agents/mimir.agent.md from .github/extensions/mimir-feedback/ (three levels up).
-const MIMIR_PATH = join(__dirname, "..", "..", "..", "agents", "mimir.agent.md");
+// The CCA heuristic library lives in the mimir-heuristics companion skill (moved
+// out of mimir.agent.md in 0.13.x). Resolves repo-root/skills/mimir-heuristics/SKILL.md
+// from .github/extensions/mimir-feedback/ (three levels up).
+const HEURISTICS_PATH = join(__dirname, "..", "..", "..", "skills", "mimir-heuristics", "SKILL.md");
 
 /**
- * Extract existing CCA heuristics from mimir.agent.md.
+ * Extract existing CCA heuristics from the mimir-heuristics skill.
  * Returns an array of { id, name, principle, lookFor[], source }.
  */
 function extractHeuristics() {
   let content;
   try {
-    content = readFileSync(MIMIR_PATH, "utf-8");
+    content = readFileSync(HEURISTICS_PATH, "utf-8");
   } catch {
-    return { error: "Could not read mimir.agent.md — are you in the asgard repo?" };
+    return { error: "Could not read skills/mimir-heuristics/SKILL.md — are you in the asgard repo?" };
   }
 
   const heuristics = [];
@@ -59,7 +61,7 @@ const session = await joinSession({
     {
       name: "mimir_list_heuristics",
       description:
-        "List all existing Mimir Cross-Cutting Analysis (CCA) heuristics from mimir.agent.md. " +
+        "List all existing Mimir Cross-Cutting Analysis (CCA) heuristics from the mimir-heuristics skill. " +
         "Returns each heuristic's ID, name, principle, look-for patterns, and source PR. " +
         "Use this to check what Mimir already covers before proposing new heuristics.",
       parameters: { type: "object", properties: {} },
@@ -72,7 +74,7 @@ const session = await joinSession({
     {
       name: "mimir_propose_heuristic",
       description:
-        "Generate a formatted CCA heuristic block ready to insert into mimir.agent.md. " +
+        "Generate a formatted CCA heuristic block ready to insert into the mimir-heuristics skill. " +
         "Provide a name, principle, look-for patterns, and source PR. " +
         "Returns markdown with the next available CCA-NNN ID. " +
         "Use after reviewing a PR to capture a new pattern Mimir should check for.",
@@ -130,8 +132,8 @@ const session = await joinSession({
         return [
           `## Proposed Heuristic`,
           "",
-          "Insert this block into the `## Cross-Cutting Analysis > ### Heuristics` section",
-          `of \`agents/mimir.agent.md\`, before the closing \`---\`:`,
+          "Insert this block into the `## Heuristics` section",
+          `of \`skills/mimir-heuristics/SKILL.md\`, after the last CCA block:`,
           "",
           "```markdown",
           block,

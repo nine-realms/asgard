@@ -297,6 +297,23 @@ When event handlers or callbacks modify shared state (class fields, global varia
 - State management patterns (Redux, MobX, Vuex) where actions triggered by events don't account for in-flight async actions modifying the same slice
 
 
+#### CCA-026 · Generated Contract Artifact Drift
+
+When a diff touches a committed artifact that is generated from source but published as a contract — OpenAPI/Swagger specs, `*.proto`, GraphQL SDL, generated client surfaces, checked-in migrations — treat the artifact as **evidence about its source**, not as code to review. These files are regenerated, so a fix suggested against the artifact is overwritten on the next run. The defect lives in whatever produced the wrong output.
+
+Two properties make these artifacts worth reading despite being generated. First, they are the surface consumers integrate against, so drift is a real breaking change rather than cosmetic noise. Second, generation is frequently **not** a pure function of the source — it can capture ambient state such as the environment the generator ran under, local configuration, or machine-specific values, which means the committed output can be wrong even when the source is right.
+
+**Look for:**
+- Examples that contradict the schema or the described behavior they sit next to (response example shows a status, bound, or shape the endpoint can no longer return)
+- Declared auth scopes, roles, or security schemes that don't match what the handler actually enforces
+- Constraints changed in one place but not the other — a limit raised in the schema while the example, description, or validation message still shows the old value
+- Error responses the handler can throw that the contract never declares (and declared responses the handler can't produce)
+- Environment- or machine-specific values baked into a published artifact — local hostnames, development URLs, per-developer identifiers, credentials-adjacent audience or tenant values
+- Endpoints, fields, or enum members present in source but absent from the artifact — a stale regeneration, meaning the committed contract doesn't describe the shipped code
+
+**Reporting:** anchor the finding on the **source** file and line (controller, attribute, example provider, schema annotation, config) and cite the artifact as corroborating evidence. If the drift is a stale regeneration rather than a source defect, say so explicitly and name the regeneration step — that is the fix.
+
+
 ---
 
 ## Specification-Aware Review

@@ -8,25 +8,32 @@ The goal of this repo is to build the **best possible AI coding agent** through 
 
 ## Repo Structure
 
-- `agents/` — Agent instruction files (.agent.md)
-- `skills/` — Agent-specific skills (odin-review-prompts, odin-recall, odin-evidence-bundle)
-- `extensions/` — Copilot CLI extensions (mimir-feedback)
-- `.mcp.json` — MCP server configuration (Context7)
-- `plugin.json` — Plugin manifest
+asgard is an **Agent Plugins 1.0** plugin. Component locations are fixed by the
+spec and cannot be overridden in `plugin.json` — do not move these directories.
+
+- `plugin.json` — Plugin manifest (Agent Plugins 1.0; `$schema` opts in)
+- `skills/` — Agent skills, one `SKILL.md` per subdirectory (spec-fixed location)
+- `mcp.json` — MCP server configuration, Context7 (spec-fixed location, root only)
+- `com.github.copilot/agents/` — Agent instruction files (.agent.md); Copilot's
+  client-specific namespace, since Agent Plugins 1.0 does not define portable agents
+- `.github/plugin/marketplace.json` — Marketplace catalog for `copilot plugin marketplace add`
+- `.github/extensions/` — Copilot CLI extensions (mimir-feedback). Deliberately a
+  project-local path, *not* part of the plugin — these tools load only when
+  developing asgard, never for installed-plugin users.
 
 ## Agents
 
-Agents live in `agents/<name>.agent.md`. They follow the GitHub Copilot custom agent format with YAML frontmatter defining the agent's metadata and the body containing system instructions.
+Agents live in `com.github.copilot/agents/<name>.agent.md`. They follow the GitHub Copilot custom agent format with YAML frontmatter defining the agent's metadata and the body containing system instructions.
 
 ### Agent Roster
 
 | Agent | File | Role |
 |-------|------|------|
-| **Odin** | `agents/odin.agent.md` | Orchestrator. Runs the verification loop — boost, survey, implement, verify, present. Delegates plan review to Frigg and adversarial code review to the other agents. |
-| **Tyr** | `agents/tyr.agent.md` | Convention-focused adversarial reviewer. Challenges code against readability, simplicity, and maintainability. Every criticism includes a concrete fix. |
-| **Mimir** | `agents/mimir.agent.md` | Heuristic pre-screening reviewer. Structured 3-pass review (walkthrough → file-by-file → findings) with review effort scoring. Catches what automated PR reviewers would flag. |
-| **Frigg** | `agents/frigg.agent.md` | Plan reviewer. Reviews draft implementation plans before user approval — catches architectural blind spots, scope creep, and simpler alternatives. Spawned by Odin on a different model family for cross-model diversity. |
-| **Surtr** *(experimental)* | `agents/surtr.agent.md` | Ultra-compact caveman-speak variant of Odin. Same gates, same `odin_checks` SQL ledger (cross-agent task resume works), steals all odin-* skills. Exists to benchmark whether terse imperatives match Odin's compliance at lower token cost. Drops plan file persistence and PR feedback re-entry. |
+| **Odin** | `com.github.copilot/agents/odin.agent.md` | Orchestrator. Runs the verification loop — boost, survey, implement, verify, present. Delegates plan review to Frigg and adversarial code review to the other agents. |
+| **Tyr** | `com.github.copilot/agents/tyr.agent.md` | Convention-focused adversarial reviewer. Challenges code against readability, simplicity, and maintainability. Every criticism includes a concrete fix. |
+| **Mimir** | `com.github.copilot/agents/mimir.agent.md` | Heuristic pre-screening reviewer. Structured 3-pass review (walkthrough → file-by-file → findings) with review effort scoring. Catches what automated PR reviewers would flag. |
+| **Frigg** | `com.github.copilot/agents/frigg.agent.md` | Plan reviewer. Reviews draft implementation plans before user approval — catches architectural blind spots, scope creep, and simpler alternatives. Spawned by Odin on a different model family for cross-model diversity. |
+| **Surtr** *(experimental)* | `com.github.copilot/agents/surtr.agent.md` | Ultra-compact caveman-speak variant of Odin. Same gates, same `odin_checks` SQL ledger (cross-agent task resume works), steals all odin-* skills. Exists to benchmark whether terse imperatives match Odin's compliance at lower token cost. Drops plan file persistence and PR feedback re-entry. |
 
 ### Adversarial Reviewers Without Agent Files (by design)
 
@@ -67,9 +74,9 @@ Agent `.agent.md` files are the most critical files in this repo — they define
 
 ## Versioning
 
-The plugin version lives in `plugin.json` — this is the **sole version source** for Copilot CLI plugin installs. Bump it when agent or skill files change:
+The plugin version lives in **two places that must stay in sync**: `plugin.json` (`version`) and `.github/plugin/marketplace.json` (`plugins[0].version`). `make check` enforces parity. The marketplace `metadata.version` is the *catalog* version, not the plugin's — it does not churn with plugin bumps. Bump the plugin version when agent or skill files change:
 
-- **Patch** (e.g., `0.8.0` → `0.8.1`): Any change to `agents/*.agent.md` or `skills/*/SKILL.md` — the default bump.
+- **Patch** (e.g., `0.8.0` → `0.8.1`): Any change to `com.github.copilot/agents/*.agent.md` or `skills/*/SKILL.md` — the default bump.
 - **Minor** (e.g., `0.8.1` → `0.9.0`): New agent, new skill, new step in the Odin Loop, or behavioral feature addition. Overrides patch.
 - **Major** (e.g., `0.9.0` → `1.0.0`): Breaking changes to agent behavior that require user adaptation. Overrides minor.
 
@@ -95,13 +102,14 @@ Odin's operational skills (`skills/*/SKILL.md`) extract step-specific content fr
 
 | Skill | Agent | Type | Purpose |
 |-------|-------|------|---------|
-| `mimir-heuristics` | Mimir | Companion | CCA heuristic library (CCA-001–025), spec-aware review, dynamic analysis |
+| `mimir-heuristics` | Mimir | Companion | CCA heuristic library (CCA-001–026), spec-aware review, dynamic analysis |
 
 ## Testing Changes
 
 After modifying agents:
 1. Run contract checks: `make check` (validates cross-file contracts — check names, model tables, skill existence)
 2. Reinstall the plugin: `copilot plugin install ./` (from the repo root)
+   - Or, via the marketplace: `copilot plugin marketplace add ./` then `copilot plugin install asgard@asgard`
 3. Inside Copilot CLI, verify with `/agent` and select the modified agent
 4. Run a real task through the modified agent and verify the full loop completes
 

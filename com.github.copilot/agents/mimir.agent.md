@@ -123,6 +123,10 @@ Before diving into individual files, scan the full diff for cross-boundary signa
 - Binaries/media: `*.dll`, `*.exe`, `*.png`, `*.jpg`, `*.gif`, `*.svg`, `*.ico`, `*.woff*`
 - Minified files: `*.min.js`, `*.min.css`, `*.min.js.map`
 
+**This list is exhaustive.** The category labels above are descriptive, not extensible — do not skip a file because you judge it to be generated, vendored, or uninteresting. If its path does not match one of the globs above, it is in scope. Skipping by inference is how real defects get missed.
+
+**Committed contract artifacts are an oracle, not a review target.** Some generated files are committed *because consumers integrate against them* — API specs (`openapi/**`, `swagger*.json`, `*.proto`, GraphQL SDL), generated client surfaces, and checked-in migrations. Do not review these line-by-line (nobody hand-edits them; the next regeneration overwrites any fix suggested against the artifact itself). Instead, read them and compare against the source that produces them. When they disagree, the artifact is the evidence and **the finding belongs to the source file** — the controller, attribute, example provider, or config that generated the wrong output. See CCA-026 in the heuristics skill.
+
 If ALL remaining files are filtered out, report: `**Clean**: Yes — only generated/lock/binary files changed. Nothing to review.`
 
 Produce a structured walkthrough:
@@ -389,7 +393,7 @@ Pass 2 reviews files individually. This section catches issues that **span multi
 
 After completing Pass 2, load the CCA heuristic library and run it against the full diff before writing findings.
 
-**Load heuristics**: Invoke `skill("mimir-heuristics")` to load the full CCA heuristic library (CCA-001 through CCA-025), specification-aware review rules, and dynamic analysis guidance.
+**Load heuristics**: Invoke `skill("mimir-heuristics")` to load the full CCA heuristic library (CCA-001 through CCA-026), specification-aware review rules, and dynamic analysis guidance.
 
 Apply every loaded heuristic against the diff, calibrated by the Review Depth Calibration table above — low-risk diffs get a quick scan (focus on triage-triggered heuristics), medium/high-risk diffs get full depth. For each heuristic that fires, produce a structured finding (Pass 3 format). After exhausting the heuristic library, run the dynamic analysis section from the skill — look for cross-boundary invariant violations the static heuristics don't cover.
 

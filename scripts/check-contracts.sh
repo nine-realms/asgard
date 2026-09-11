@@ -14,9 +14,10 @@ fail() { printf "  ❌ %s\n" "$1"; ERRORS=$((ERRORS + 1)); }
 echo "▸ Check-name contract (skill ↔ agent gates)"
 
 SKILL="$REPO_ROOT/skills/odin-review-prompts/SKILL.md"
-AGENT="$REPO_ROOT/agents/odin.agent.md"
-SURTR="$REPO_ROOT/agents/surtr.agent.md"
-VIDAR="$REPO_ROOT/agents/vidar.agent.md"
+AGENTS_DIR="$REPO_ROOT/com.github.copilot/agents"
+AGENT="$AGENTS_DIR/odin.agent.md"
+SURTR="$AGENTS_DIR/surtr.agent.md"
+VIDAR="$AGENTS_DIR/vidar.agent.md"
 
 for name in review-tyr review-mimir review-heimdall review-thor review-loki; do
   if ! grep -q "$name" "$SKILL" 2>/dev/null; then
@@ -110,7 +111,7 @@ fi
 # review_context=panel must appear in both the skill and mimir.agent.md.
 echo "▸ Panel mode contract (skill ↔ mimir)"
 
-MIMIR="$REPO_ROOT/agents/mimir.agent.md"
+MIMIR="$AGENTS_DIR/mimir.agent.md"
 
 if grep -q "review_context=panel" "$SKILL" 2>/dev/null; then
   pass "review_context=panel in skill"
@@ -135,6 +136,21 @@ elif grep -q "$PLUGIN_VERSION" "$REPO_ROOT/CHANGELOG.md" 2>/dev/null; then
   pass "v$PLUGIN_VERSION found in CHANGELOG.md"
 else
   fail "v$PLUGIN_VERSION not found in CHANGELOG.md"
+fi
+
+# ── 4b. Plugin version ↔ marketplace catalog ────────────────────────────
+# The marketplace entry's plugin version must match plugin.json, or /plugin
+# update notifications silently stop working for marketplace installs.
+echo "▸ Plugin version ↔ marketplace"
+
+MARKETPLACE="$REPO_ROOT/.github/plugin/marketplace.json"
+MP_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$MARKETPLACE','utf8')).plugins[0].version)" 2>/dev/null || true)
+if [ -z "$MP_VERSION" ]; then
+  fail "Could not parse plugins[0].version from .github/plugin/marketplace.json"
+elif [ "$MP_VERSION" = "$PLUGIN_VERSION" ]; then
+  pass "marketplace plugins[0].version matches plugin.json ($PLUGIN_VERSION)"
+else
+  fail "marketplace.json plugins[0].version ($MP_VERSION) != plugin.json ($PLUGIN_VERSION)"
 fi
 
 # ── 5. No duplicate models within H/T/L rows ────────────────────────────

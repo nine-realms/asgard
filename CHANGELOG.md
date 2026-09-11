@@ -2,6 +2,71 @@
 
 Forked from `burkeholland/anvil` @ commit `ae17066` (2026-03-24). Significant divergence since — check upstream for anything you want to pull back in.
 
+## 0.17.0 — Agent Plugins 1.0 manifest + plugin marketplace
+
+- **New heuristic CCA-026 · Generated Contract Artifact Drift** (`skills/mimir-heuristics/SKILL.md`):
+  committed generated contracts (OpenAPI specs, `*.proto`, GraphQL SDL, checked-in migrations) are an
+  **oracle, not a review target** — findings anchor on the source that generated the wrong output,
+  since artifact-level fixes get overwritten on regeneration. Motivated by the Mimir ground-truth
+  corpus: several missed positives were `openapi/*.json` drift where reviewers flagged the artifact.
+  `mimir.agent.md` Pass 1 gains the companion rule plus an explicit note that the skip-list globs are
+  **exhaustive** — no skipping files by "looks generated" inference. Heuristic count 25 → 26 in
+  `AGENTS.md` and the agent file.
+
+- **Migrated `plugin.json` to the Agent Plugins 1.0 manifest.** The manifest now declares
+  `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`, which opts asgard into
+  the open [Agent Plugins 1.0](https://github.com/agentplugins/agent-plugins-spec) format instead of
+  Copilot's legacy plugin format. Agent Plugins 1.0 is a **closed** schema: the component path fields
+  the old manifest used (`agents`, `skills`, `mcpServers`) are not valid fields and have been removed.
+  Component locations are now fixed by the spec, so the repo layout moved to match:
+  - `agents/` → **`com.github.copilot/agents/`**. Agent Plugins 1.0 defines only two *portable*
+    component types — skills and MCP servers. Custom agents are client-specific, so they live under
+    the reverse-domain namespace directory for the client that understands them. Clients ignore
+    namespaces they don't support.
+  - `.mcp.json` → **`mcp.json`** at the plugin root, now carrying its own required
+    `"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"` and an explicit
+    `"type": "stdio"` on the Context7 server (the spec requires a `type` discriminator per server).
+  - `skills/` is unchanged — it was already at the spec-fixed location.
+- **Breaking for existing installs.** Anyone already running asgard should reinstall
+  (`copilot plugin install nine-realms/asgard`) to pick up the new layout. Nothing about agent
+  behavior, gates, or skills changed in this release — it is purely a packaging migration.
+- **New `.github/plugin/marketplace.json`** — asgard now publishes itself as a Copilot CLI plugin
+  marketplace, so it can be added and updated as a catalog rather than only direct-installed:
+  ```bash
+  copilot plugin marketplace add nine-realms/asgard
+  copilot plugin install asgard@asgard
+  ```
+  This is additive — `copilot plugin install nine-realms/asgard` still works. The benefit is that
+  `/plugin` surfaces upstream version bumps and offers an **Update** action, which direct installs
+  don't get. The plugin entry uses `"source": "."` because the manifest sits at the repo root.
+- **Path updates for the move**: `scripts/check-contracts.sh` now resolves agents through a single
+  `AGENTS_DIR` variable, and `.github/copilot-instructions.md` documents the new
+  structure with a warning that the spec-fixed locations must not be moved.
+- **`mimir-feedback` extension repointed to the heuristic library's real home.** The extension had
+  been reading CCA heuristics from `agents/mimir.agent.md`, but the library moved to
+  `skills/mimir-heuristics/SKILL.md` back in 0.13.x — so `mimir_list_heuristics` has been returning
+  an empty list ever since, and `mimir_propose_heuristic` directed edits at the wrong file. Caught by
+  Mimir's own review of this migration (the path rewrite validated the directory move without
+  validating the target still held the data — CCA-026's shape). Now resolves
+  `skills/mimir-heuristics/SKILL.md` and extracts all 26 heuristics.
+- **New contract check: plugin version ↔ marketplace parity.** The version now exists in both
+  `plugin.json` and `marketplace.json` (`plugins[0].version`); `check-contracts.sh` §4b fails if they
+  drift, since a stale marketplace version silently kills `/plugin` update notifications — the whole
+  point of shipping the catalog. The marketplace `metadata.version` is the catalog's own version
+  (`1.0.0`), deliberately decoupled from the plugin version.
+- **Remote-install path verified by proxy**: the marketplace entry uses the relative-path source form
+  (`"source": "."`). Verified against a local `marketplace add ./`, and the identical remote code path
+  was proven with a third-party GitHub-hosted marketplace using `"source": "."`
+  (`copilot plugin marketplace add datopian/portaljs` → `copilot plugin install portaljs@datopian-portaljs`
+  succeeded — the CLI clones the full repo into its marketplace cache, so relative sources resolve
+  against the clone root). After this lands on `main`, smoke-test
+  `copilot plugin marketplace add nine-realms/asgard` + `copilot plugin install asgard@asgard` once.
+  Note the CLI now warns that **direct installs are deprecated** ("Only plugin@marketplace installs
+  will be supported in a future release"), so the marketplace path is the forward-compatible one.
+- **`.github/extensions/` stays outside the plugin**, as established in 0.16.0 — Agent Plugins 1.0
+  doesn't define extensions, and `mimir-feedback` is an authoring tool that should only load when
+  developing asgard.
+
 ## 0.16.0 — Vidar: autonomous worker variant
 
 - **New agent `asgard:vidar`**: A headless, fully autonomous variant of Surtr, built to be dispatched *by another agent* (orchestrator/command agent), not used directly by a human. Same `odin_checks` ledger and gate skeleton; derived from Surtr but stripped for unattended operation.

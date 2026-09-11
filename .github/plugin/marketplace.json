@@ -1,0 +1,30 @@
+{
+  "name": "asgard",
+  "owner": {
+    "name": "Agents of Asgard"
+  },
+  "metadata": {
+    "description": "Adversarial code review agents for GitHub Copilot CLI",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "asgard",
+      "description": "Odin agent ecosystem \u2014 adversarial code review agents (Odin, Mimir, Frigg, Tyr, Surtr, Vidar) for GitHub Copilot CLI",
+      "version": "0.17.0",
+      "source": ".",
+      "author": {
+        "name": "Agents of Asgard"
+      },
+      "repository": "https://github.com/nine-realms/asgard",
+      "homepage": "https://github.com/nine-realms/asgard",
+      "keywords": [
+        "odin",
+        "code-review",
+        "adversarial-review",
+        "agents"
+      ],
+      "category": "code-review"
+    }
+  ]
+}
