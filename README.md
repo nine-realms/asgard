@@ -51,8 +51,10 @@ Three skills is the practical ceiling — beyond that, remembering to invoke the
 
 ```bash
 copilot plugin marketplace add nine-realms/asgard
-copilot plugin install asgard@asgard
+copilot plugin install asgard@nine-realms
 ```
+
+> The form is `<plugin>@<marketplace>` — the `asgard` plugin, served from the `nine-realms` marketplace.
 
 **Direct install:**
 
@@ -63,6 +65,13 @@ copilot plugin install nine-realms/asgard
 Then pick your agent:
 ```
 /agent   → pick odin
+```
+
+## Uninstall
+
+```bash
+copilot plugin uninstall asgard                   # remove the plugin
+copilot plugin marketplace remove nine-realms     # optionally remove the marketplace too
 ```
 
 ## Configuration (Optional)
